@@ -221,7 +221,11 @@ export const createMarkerGraphic = (position: [number, number], icon: any, extDa
  * 创建线段
  * @param coordinates
  */
-export const createPolyline = (coordinates: any = null, color: string = '#3A7DFF',extData: any = {}) => {
+export const createPolyline = (
+  coordinates: any = null,
+  color: string = '#3A7DFF',
+  extData: any = {}
+) => {
   if (!esriModules) return null
   if (!coordinates)
     coordinates = [
@@ -261,7 +265,7 @@ export const createMarkerPopup = (dom, position: [number, number]) => {
         longitude: position[0],
         latitude: position[1],
         spatialReference: { wkid: 4326 } // WGS84坐标系，与高德默认一致
-      }),
+      })
     })
   })
 }

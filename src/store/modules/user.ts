@@ -66,20 +66,11 @@ export const useUserStore = defineStore('admin-user', {
       this.roles = userInfo.roles
       this.user = userInfo.user
       this.isSetUser = true
-      const routers = userInfo.menus
-      // [0].children
-      // if (routers.length === 1) {
-      //   routers = routers[0].children.map((item) => {
-      //     item.path = `${routers[0].path}/${item.path}`
-      //     return item
-      //   }) // 兼容只有一个子菜单的情况
-      //   console.log('routers', routers)
-      // }
-      // [0].children
-      // [0].children
-      // routers = routers.slice(0, -1)
+      // 直接存储菜单数据
       wsCache.set(CACHE_KEY.USER, userInfo)
-      wsCache.set(CACHE_KEY.ROLE_ROUTERS, routers)
+      if (userInfo.menus) {
+        wsCache.set(CACHE_KEY.ROLE_ROUTERS, userInfo.menus)
+      }
     },
     async setUserAvatarAction(avatar: string) {
       const userInfo = wsCache.get(CACHE_KEY.USER)

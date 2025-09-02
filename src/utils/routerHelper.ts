@@ -19,7 +19,7 @@ export const registerComponent = (componentPath: string) => {
   }
 }
 /* Layout */
-export const Layout = () => import('@/layout/Layout.vue')
+export const Layout = () => import('@/layout/SimpleLayout.vue')
 
 export const getParentLayout = () => {
   return () =>

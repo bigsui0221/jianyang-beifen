@@ -43,7 +43,7 @@ export const getInfo = () => {
 
 // 获取用户权限信息
 export const getInfoCode = () => {
-  return request.get({ url: '/system/auth/get-permission-info-code?code=floodctrl' })
+  return request.get({ url: '/system/auth/get-permission-info-code?code=sector' })
 }
 
 //获取登录验证码

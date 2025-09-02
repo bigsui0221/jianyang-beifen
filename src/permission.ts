@@ -76,11 +76,7 @@ router.beforeEach(async (to, from, next) => {
         isRelogin.show = true
         await userStore.setUserInfoAction()
         isRelogin.show = false
-        // 后端过滤菜单
-        await permissionStore.generateRoutes()
-        permissionStore.getAddRouters.forEach((route) => {
-          router.addRoute(route as unknown as RouteRecordRaw) // 动态添加可访问路由表
-        })
+        // 简化的菜单处理，菜单数据已在用户信息中获取
         const redirectPath = from.query.redirect || to.path
         // 修复跳转时不带参数的问题
         const redirect = decodeURIComponent(redirectPath as string)
