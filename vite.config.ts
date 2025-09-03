@@ -38,7 +38,7 @@ export default ({ command, mode }: ConfigEnv): UserConfig => {
             // 本地跨域代理. 目前注释的原因：暂时没有用途，server 端已经支持跨域
             proxy: {
               ['/admin-api']: {
-                target: 'https://jy.zhsw.aotuiot.com',
+                target: 'http://192.168.0.143:48080',
                 ws: false,
                 changeOrigin: true,
                 rewrite: (path) => path.replace(new RegExp(`^/admin-api`), '/admin-api'),
@@ -48,7 +48,7 @@ export default ({ command, mode }: ConfigEnv): UserConfig => {
                 ws: false,
                 changeOrigin: true,
                 rewrite: (path) => path.replace(new RegExp(`^/cimgateway`), '/cimgateway'),
-              },
+                },
             },
         },
         // 项目使用的vite插件。 单独提取到build/vite/plugin中管理

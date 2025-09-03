@@ -12,6 +12,6 @@ export const GISApi = {
 
   /** 简阳天气预报 */
   publicWeather: async () => {
-    return await request.get({ url: `/floodctrl/gis/publicWeather`})
+    return await request.get({ url: `/floodctrl/gis/publicWeather` })
   }
 }

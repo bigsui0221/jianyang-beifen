@@ -79,11 +79,11 @@ function getComponent(componentPath: string) {
     // 可以在这里预定义一些常用组件
     '/dashboard': () => import('@/views/Dashboard/Index.vue'),
     '/index': () => import('@/views/Dashboard/Index.vue'),
-    '/incidents': () => import('@/views/Floodctrl/incidents/index.vue'),
-    '/metrics': () => import('@/views/Floodctrl/metrics/index.vue'),
-    '/dispatch': () => import('@/views/Floodctrl/dispatch/index.vue'),
-    '/venues': () => import('@/views/Floodctrl/venues/index.vue'),
-    '/monitoring': () => import('@/views/Floodctrl/monitoring/index.vue')
+    '/incidents': () => import('@/views/sector/Incidents/index.vue'),
+    '/metrics': () => import('@/views/sector/metrics/index.vue'),
+    '/dispatch': () => import('@/views/sector/dispatch/index.vue'),
+    '/venues': () => import('@/views/sector/venues/index.vue'),
+    '/monitoring': () => import('@/views/sector/monitoring/index.vue')
   }
 
   // 如果在预定义映射中找到，直接返回

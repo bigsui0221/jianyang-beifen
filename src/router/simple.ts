@@ -59,7 +59,7 @@ export const simpleRoutes: RouteRecordRaw[] = [
       {
         path: 'incidents',
         name: 'Incidents',
-        component: () => import('@/views/Floodctrl/incidents/index.vue'),
+        component: () => import('@/views/sector/Incidents/index.vue'),
         meta: {
           title: '事件协同处置'
         }
@@ -67,7 +67,7 @@ export const simpleRoutes: RouteRecordRaw[] = [
       {
         path: 'metrics',
         name: 'Metrics',
-        component: () => import('@/views/Floodctrl/metrics/index.vue'),
+        component: () => import('@/views/sector/metrics/index.vue'),
         meta: {
           title: '行业体征指标'
         }
@@ -75,7 +75,7 @@ export const simpleRoutes: RouteRecordRaw[] = [
       {
         path: 'dispatch',
         name: 'Dispatch',
-        component: () => import('@/views/Floodctrl/dispatch/index.vue'),
+        component: () => import('@/views/sector/dispatch/index.vue'),
         meta: {
           title: '指挥调度所'
         }
@@ -83,7 +83,7 @@ export const simpleRoutes: RouteRecordRaw[] = [
       {
         path: 'venues',
         name: 'Venues',
-        component: () => import('@/views/Floodctrl/venues/index.vue'),
+        component: () => import('@/views/sector/venues/index.vue'),
         meta: {
           title: '场所保障'
         }
@@ -91,7 +91,7 @@ export const simpleRoutes: RouteRecordRaw[] = [
       {
         path: 'monitoring',
         name: 'Monitoring',
-        component: () => import('@/views/Floodctrl/monitoring/index.vue'),
+        component: () => import('@/views/sector/monitoring/index.vue'),
         meta: {
           title: '数据监控'
         }
