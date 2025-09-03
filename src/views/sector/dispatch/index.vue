@@ -94,7 +94,7 @@
                 </div>
               </div>
               <div class="event-action">
-                <button class="view-details-btn">查看详情</button>
+                <button class="view-details-btn" @click="showEventDetail(event)">查看详情</button>
               </div>
             </div>
           </div>
@@ -105,7 +105,11 @@
 
   <!-- 右侧悬浮区域 -->
   <div class="floating-panel right-panel">
-    <div class="panel-container equal">
+    <transition name="panel-slide" mode="out-in">
+    <!-- 默认模式：仓库管理 + 资源调度 -->
+    <div v-if="rightPanelMode === 'default'" key="default" class="right-panel-group">
+    <transition-group name="panel-stagger" tag="div" class="right-panel-group-inner" appear>
+    <div class="panel-container equal" key="warehouse-panel">
       <div class="container-header">
         <div class="header-icon">
           <i class="icon-warning"></i>
@@ -140,14 +144,14 @@
                 </div>
               </div>
               <div class="warehouse-action">
-                <button class="view-details-btn">查看详情</button>
+                <button class="view-details-btn" @click="showWarehouseDetail(wh)">查看详情</button>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="panel-container equal">
+    <div class="panel-container equal" key="resource-panel">
       <div class="container-header">
         <div class="header-icon">
           <i class="icon-warning"></i>
@@ -233,6 +237,104 @@
         </div>
       </div>
     </div>
+    </transition-group>
+    </div>
+
+    <!-- 事件详情模式 -->
+    <div v-else-if="rightPanelMode === 'eventDetail'" key="eventDetail">
+      <div class="panel-container equal">
+        <div class="container-header clickable simple" @click="backToDefault">
+          <div class="header-icon">
+            <i class="icon-back"></i>
+          </div>
+          <h3>未结案事件</h3>
+        </div>
+        <div class="container-content">
+          <div class="event-detail-wrapper">
+            <!-- 头部点击即可关闭，内部不再需要返回栏 -->
+            <div class="event-detail-grid">
+              <div class="detail-row"><span class="detail-key">事件编号：</span><span class="detail-val">{{ selectedEvent?.eventCode || selectedEvent?.id || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">事件名称：</span><span class="detail-val">{{ selectedEvent?.eventTitle || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">事件类型：</span><span class="detail-val">{{ selectedEvent?.eventType?.desc || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">事件等级：</span><span class="detail-val">{{ selectedEvent?.eventLevel?.desc || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">上报人：</span><span class="detail-val">{{ selectedEvent?.reporter || '—' }}</span></div>
+              <div class="detail-row detail-desc"><span class="detail-key">事件描述：</span><span class="detail-val">{{ selectedEvent?.eventDescription || '—' }}</span></div>
+            </div>
+
+            <div class="event-images" v-if="(selectedEvent?.imgUrls && selectedEvent.imgUrls.length)">
+              <img v-for="(img,idx) in selectedEvent.imgUrls" :key="idx" :src="img" alt="图片" />
+            </div>
+
+            <div class="process-steps">
+              <div class="steps-title">处理过程</div>
+              <div class="steps">
+                <div
+                  class="step"
+                  v-for="(step, idx) in (selectedEvent?.processList || [])"
+                  :key="idx"
+                  :class="stepClass(idx, step)"
+                >
+                  <div class="rail">
+                    <div class="line"></div>
+                    <div class="dot"></div>
+                  </div>
+                  <div class="meta">
+                    <div class="name">{{ step.processName || '—' }}</div>
+                    <div class="time">{{ formatTimestamp(step.processTime) }}</div>
+                    <div class="person" v-if="step.processPerson">处理人：{{ step.processPerson }}</div>
+                    <div class="info" v-if="step.processInfo">{{ step.processInfo }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 仓库详情模式 -->
+    <div v-else-if="rightPanelMode === 'warehouseDetail'" key="warehouseDetail">
+      <div class="panel-container equal">
+        <div class="container-header clickable simple" @click="backToDefault">
+          <div class="header-icon">
+            <i class="icon-back"></i>
+          </div>
+          <h3>仓库详情</h3>
+        </div>
+        <div class="container-content">
+          <div class="event-detail-wrapper">
+            <div class="event-detail-grid">
+              <div class="detail-row"><span class="detail-key">仓库编号：</span><span class="detail-val">{{ selectedWarehouse?.warehouseCode || selectedWarehouse?.id || selectedWarehouse?.warehouseId || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">仓库名称：</span><span class="detail-val">{{ selectedWarehouse?.name || selectedWarehouse?.warehouseName || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">地址：</span><span class="detail-val">{{ selectedWarehouse?.address || selectedWarehouse?.warehouseAddress || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">联系人：</span><span class="detail-val">{{ selectedWarehouse?.contactPerson || selectedWarehouse?.linkman || '—' }}</span></div>
+              <div class="detail-row"><span class="detail-key">联系电话：</span><span class="detail-val">{{ selectedWarehouse?.contactNumber || selectedWarehouse?.phone || '—' }}</span></div>
+              <div class="detail-row detail-desc" v-if="selectedWarehouse?.desc || selectedWarehouse?.remark || selectedWarehouse?.description">
+                <span class="detail-key">仓库描述：</span>
+                <span class="detail-val">{{ selectedWarehouse?.desc || selectedWarehouse?.remark || selectedWarehouse?.description }}</span>
+              </div>
+            </div>
+            <div class="drawer-table" v-if="warehouseItems.length">
+              <el-table :data="warehouseItems" height="240" size="small" stripe>
+                <el-table-column label="名称" min-width="160">
+                  <template #default="{ row }">{{ row.name || '—' }}</template>
+                </el-table-column>
+                <el-table-column label="规格/型号" min-width="160">
+                  <template #default="{ row }">{{ row.spec || '—' }}</template>
+                </el-table-column>
+                <el-table-column label="单位" min-width="120">
+                  <template #default="{ row }">{{ row.unit || '—' }}</template>
+                </el-table-column>
+                <el-table-column label="数量" min-width="120">
+                  <template #default="{ row }">{{ row.quantity ?? '—' }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </transition>
   </div>
 </template>
 
@@ -255,6 +357,11 @@ const warehouseResourceData = ref<any[]>([]);
 const unclosedEvents = ref<any[]>([]);
 const searchQuery = ref<string>("");
 const activeResourceTab = ref<string>("vehicles");
+// 右侧面板模式：default | eventDetail | warehouseDetail
+const rightPanelMode = ref<string>("default");
+const selectedEvent = ref<any>(null);
+const selectedWarehouse = ref<any>(null);
+const warehouseItems = ref<any[]>([]);
 
 const filteredEvents = computed(() => {
   const kw = searchQuery.value.trim().toLowerCase();
@@ -409,6 +516,81 @@ const centerOnCar = (row: any) => {
   } catch (e) {
     console.warn("地图视图定位失败", e);
   }
+};
+
+// 切换到事件详情并请求详情
+const showEventDetail = async (event: any) => {
+  // 先展示基本信息，立即切换右侧面板
+  selectedEvent.value = event;
+  rightPanelMode.value = "eventDetail";
+  try {
+    const id = event?.id ?? event?.eventId;
+    if (id == null) return;
+    const res = await DispatchApi.getEventDetail(id);
+    const detail = (res && (res.data ?? res)) || null;
+    if (detail) {
+      // 用返回详情覆盖/合并已有字段
+      selectedEvent.value = { ...event, ...detail };
+    }
+  } catch (err) {
+    console.warn("获取事件详情失败", err);
+  }
+};
+
+// 展示仓库详情：调用接口并切换到仓库详情面板
+const showWarehouseDetail = async (warehouse: any) => {
+  // 先展示基本信息，立即切换右侧面板
+  selectedWarehouse.value = warehouse;
+  warehouseItems.value = [];
+  rightPanelMode.value = "warehouseDetail";
+  try {
+    const id = warehouse?.id ?? warehouse?.warehouseId;
+    if (id == null) return;
+    const res = await DispatchApi.getWarehouseDetail(id);
+    const detail: any = (res && (res.data ?? res)) || {};
+    selectedWarehouse.value = { ...warehouse, ...detail };
+    // 兼容多种返回字段名（materialList 为示例中的字段）
+    const rawItems = (detail.materialList || detail.items || detail.materials || detail.list || []) as any[];
+    warehouseItems.value = Array.isArray(rawItems)
+      ? rawItems.map((it: any) => ({
+          name: it.name ?? it.materialName ?? it.itemName ?? it.productName ?? it.goodsName ?? it.material ?? '',
+          spec: it.spec ?? it.model ?? it.specification ?? it.specificationModel ?? it.type ?? '',
+          unit: it.unit ?? it.measuringUnit ?? it.uom ?? '',
+          quantity: it.quantity ?? it.qty ?? it.amount ?? it.count ?? it.materialNum ?? 0,
+        }))
+      : [];
+  } catch (err) {
+    console.warn("获取仓库详情失败", err);
+  }
+};
+
+// 返回右侧默认面板
+const backToDefault = () => {
+  rightPanelMode.value = "default";
+};
+
+// 时间戳格式化
+const formatTimestamp = (ts: any): string => {
+  if (!ts && ts !== 0) return "—";
+  const date = new Date(Number(ts));
+  if (isNaN(date.getTime())) return String(ts);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${y}/${m}/${d} ${hh}:${mm}:${ss}`;
+};
+
+// 步骤样式计算：最后一步为待处理/当前，其余为已完成
+const stepClass = (idx: number, _step: any) => {
+  const total = selectedEvent.value?.processList?.length || 0;
+  const isLast = idx === total - 1;
+  return {
+    completed: !isLast,
+    current: isLast,
+  };
 };
 </script>
 <style lang="scss" scoped>
@@ -580,6 +762,17 @@ const centerOnCar = (row: any) => {
         :deep(.el-table td.el-table__cell) {
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
+        /* 强制 hover/当前行为深色主题，避免白底白字 */
+        :deep(.el-table__body tr:hover>td),
+        :deep(.el-table__body tr.el-table__row:hover>td) {
+          background: rgba(74, 144, 226, 0.18) !important;
+          color: #e6f4ff !important;
+        }
+        :deep(.el-table__body tr.el-table__row--current>td) {
+          background: rgba(74, 144, 226, 0.24) !important;
+          color: #ffffff !important;
+        }
+        :deep(.el-table .cell) { color: inherit; }
         :deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
           background: rgba(255, 255, 255, 0.03);
         }
@@ -690,6 +883,34 @@ const centerOnCar = (row: any) => {
     position: relative;
     z-index: 1;
   }
+}
+
+/* 可点击头部，用于关闭事件详情 */
+.clickable { cursor: pointer; }
+
+/* 简洁头部样式 */
+.container-header.simple {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.container-header.simple::before { display: none; }
+.container-header.simple .header-icon {
+  background: transparent;
+  box-shadow: none;
+}
+.container-header.simple .header-icon i.icon-back::before {
+  content: "←";
+  color: #9fd1ff;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.container-header.simple h3 {
+  font-weight: 500;
 }
 
 /* 容器内容 */
@@ -1078,6 +1299,109 @@ const centerOnCar = (row: any) => {
   .warning-time {
     font-size: 11px;
     color: #999;
+  }
+}
+
+/* 响应式设计 */
+/* 事件详情样式 */
+.event-detail-wrapper { display: flex; flex-direction: column; gap: 16px; }
+.event-detail-header { display: flex; align-items: center; justify-content: space-between; }
+.event-detail-title { font-size: 16px; color: #ffffff; font-weight: 600; }
+.back-btn {
+  background: transparent;
+  color: #9fd1ff;
+  border: 1px solid rgba(74, 144, 226, 0.5);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.event-detail-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.detail-row { display: flex; font-size: 12px; line-height: 1.5; }
+.detail-key { color: rgba(255,255,255,0.7); margin-right: 6px; flex-shrink: 0; }
+.detail-val { color: #ffffff; flex: 1; }
+.detail-desc .detail-val { white-space: pre-wrap; }
+.event-images { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.event-images img { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(74,144,226,0.3); }
+.process-timeline { display: flex; flex-direction: column; gap: 8px; }
+.process-timeline .timeline-title { font-size: 14px; color: #e6f4ff; font-weight: 600; }
+.timeline-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.timeline-list::-webkit-scrollbar { display: none; }
+.timeline-item { display: flex; gap: 10px; align-items: flex-start; }
+.timeline-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #4a90e2; margin-top: 6px; }
+.timeline-item .content { flex: 1; font-size: 12px; color: #fff; }
+.timeline-item .content .row { margin-bottom: 2px; }
+
+/* 右侧面板切换动画 */
+.panel-slide-enter-from,
+.panel-slide-leave-to { opacity: 0; transform: translateX(24px); }
+.panel-slide-enter-active,
+.panel-slide-leave-active { transition: all .25s ease; }
+.panel-slide-enter-to,
+.panel-slide-leave-from { opacity: 1; transform: translateX(0); }
+
+/* 默认面板内两块子面板的进入动画（交错） */
+.right-panel-group-inner { display: contents; }
+.panel-stagger-enter-from { opacity: 0; transform: translateY(8px) scale(0.98); }
+.panel-stagger-enter-active { transition: all .28s cubic-bezier(.2,.7,.2,1); }
+.panel-stagger-enter-to { opacity: 1; transform: translateY(0) scale(1); }
+.panel-stagger-leave-active { transition: all .18s ease; opacity: 0; transform: translateY(8px) scale(0.98); }
+.panel-stagger-move { transition: transform .28s ease; }
+
+/* 进入时小延迟实现错峰 */
+.panel-stagger-enter-from[key="resource-panel"] { transition-delay: .06s; }
+
+/* 步骤进度样式 */
+.process-steps { display: flex; flex-direction: column; gap: 10px; }
+.process-steps .steps-title { font-size: 14px; color: #e6f4ff; font-weight: 600; }
+.process-steps .steps { position: relative; display: flex; flex-direction: column; gap: 14px; }
+.process-steps .step { display: grid; grid-template-columns: 16px 1fr; gap: 12px; align-items: start; }
+.process-steps .step .rail { position: relative; width: 16px; height: 100%; }
+.process-steps .step .rail .line { position: absolute; left: 7px; top: 0; bottom: -14px; width: 2px; background: rgba(255,255,255,0.15); }
+.process-steps .step:last-child .rail .line { bottom: 6px; }
+.process-steps .step .rail .dot { position: absolute; top: 6px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: #4a90e2; box-shadow: 0 0 0 2px rgba(74,144,226,0.35); }
+.process-steps .step.completed .rail .line { background: rgba(79,199,120,0.5); }
+.process-steps .step.completed .rail .dot { background: #4fc778; box-shadow: 0 0 0 2px rgba(79,199,120,0.35); }
+.process-steps .step.current .rail .dot { background: #faad14; box-shadow: 0 0 0 2px rgba(250,173,20,0.35); }
+.process-steps .meta { display: flex; flex-direction: column; gap: 2px; color: #fff; }
+.process-steps .meta .name { font-weight: 600; }
+.process-steps .meta .time { font-size: 12px; color: rgba(255,255,255,0.7); }
+.process-steps .meta .person { font-size: 12px; color: rgba(255,255,255,0.9); }
+.process-steps .meta .info { font-size: 12px; color: rgba(255,255,255,0.95); }
+
+/* 右侧默认两面板外层，不影响父级flex布局 */
+.right-panel-group { display: contents; }
+
+/* 仓库详情弹框内表格，复用右侧资源表格风格 */
+.drawer-table {
+  :deep(.el-table) {
+    --el-table-header-bg-color: rgba(255, 255, 255, 0.06);
+    --el-table-tr-bg-color: rgba(255, 255, 255, 0.04);
+    --el-table-row-hover-bg-color: rgba(74, 144, 226, 0.18);
+    --el-table-border-color: rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: #e6f4ff;
+  }
+  :deep(.el-table th.el-table__cell) {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e6f4ff;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  :deep(.el-table td.el-table__cell) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  :deep(.el-table__body tr:hover>td),
+  :deep(.el-table__body tr.el-table__row:hover>td) {
+    background: rgba(74, 144, 226, 0.18) !important;
+    color: #e6f4ff !important;
+  }
+  :deep(.el-table__body tr.el-table__row--current>td) {
+    background: rgba(74, 144, 226, 0.24) !important;
+    color: #ffffff !important;
+  }
+  :deep(.el-table .cell) { color: inherit; }
+  :deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
+    background: rgba(255, 255, 255, 0.03);
   }
 }
 
