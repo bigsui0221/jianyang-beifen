@@ -339,15 +339,20 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, onMounted, computed } from "vue";
+import { ref, shallowRef, onMounted, onBeforeUnmount, computed, watch } from "vue";
 import { Search, Location } from "@element-plus/icons-vue";
-import { initGisMap, createMarkerGraphic, esriModules } from "@/utils/gis";
+import { initGisMap, createMarkerGraphic, createMarkerPopup, updatePopupPosition, esriModules } from "@/utils/gis";
 import carIcon from "@/assets/imgs/sector/car.png";
+import personIcon from "@/assets/imgs/sector/people.png";
+import warehouseIcon from "@/assets/imgs/sector/house.png";
 import { DispatchApi } from "@/api/sector/dispatch";
 
 const gisMap = shallowRef<any>(null);
 const mapView = shallowRef<any>(null);
 const resourceLayer = shallowRef<any>(null);
+const personLayer = shallowRef<any>(null);
+const warehouseLayer = shallowRef<any>(null);
+let clickHandle: any = null;
 const isLoading = ref<boolean>(true);
 const loadingText = ref<string>("地图加载中...");
 
@@ -390,15 +395,75 @@ const initMap = async () => {
   mapView.value = view;
   gisMap.value = map;
   isLoading.value = false;
+  // 配置 Popup：启用并固定停靠到顶部中间，避免被左右面板遮挡
+  try {
+    mapView.value.popup.autoOpenEnabled = true;
+    mapView.value.popup.visible = false;
+    mapView.value.popup.dockEnabled = true;
+    mapView.value.popup.dockOptions = {
+      position: "top-center",
+      breakpoint: false
+    } as any;
+  } catch (e) {
+    console.warn("配置Popup失败", e);
+  }
   // 初始化资源图层
   try {
-    if (esriModules && map && !resourceLayer.value) {
-      resourceLayer.value = new esriModules.GraphicsLayer();
-      map.add(resourceLayer.value);
+    if (esriModules && map) {
+      if (!resourceLayer.value) {
+        resourceLayer.value = new esriModules.GraphicsLayer({ title: "车辆图层" });
+        map.add(resourceLayer.value);
+      }
+      if (!personLayer.value) {
+        personLayer.value = new esriModules.GraphicsLayer({ title: "人员图层" });
+        map.add(personLayer.value);
+      }
+      if (!warehouseLayer.value) {
+        warehouseLayer.value = new esriModules.GraphicsLayer({ title: "仓库图层" });
+        map.add(warehouseLayer.value);
+      }
     }
   } catch (e) {
     console.warn("初始化资源图层失败", e);
   }
+  // 绑定点击命中检测（仅绑定一次）
+  try {
+    if (mapView.value) {
+      // 清理旧的事件绑定
+      clickHandle?.remove?.();
+      clickHandle = mapView.value.on("click", async (event: any) => {
+        try {
+          const hit = await mapView.value!.hitTest(event);
+          const allResults = hit?.results || [];
+          console.log("hitTest results:", allResults);
+          const layers = [resourceLayer.value, personLayer.value, warehouseLayer.value].filter(Boolean);
+          const target = allResults.find((r: any) => layers.includes(r?.graphic?.layer)) || allResults[0];
+          if (!target) {
+            // 点击空白处：隐藏所有自定义弹窗
+            popupDomMap.forEach((el) => (el.style.display = "none"));
+            personPopupMap.forEach((el) => (el.style.display = "none"));
+            warehousePopupMap.forEach((el) => (el.style.display = "none"));
+            return;
+          }
+          const graphic = target.graphic;
+          const attrs: any = graphic?.attributes || {};
+          const pid = attrs.id;
+          // 隐藏全部 DOM 弹窗
+          popupDomMap.forEach((el) => (el.style.display = "none"));
+          personPopupMap.forEach((el) => (el.style.display = "none"));
+          warehousePopupMap.forEach((el) => (el.style.display = "none"));
+          // 显示对应 DOM 弹窗（车辆 / 人员 / 仓库）
+          const el = popupDomMap.get(pid) || personPopupMap.get(pid) || warehousePopupMap.get(pid);
+          if (el) {
+            el.style.display = "block";
+            updatePopupPosition(el, graphic.geometry);
+          }
+        } catch (err) {
+          console.warn("命中检测失败", err);
+        }
+      });
+    }
+  } catch {}
 };
 
 // 调用 DispatchApi 中不需要参数的接口
@@ -494,6 +559,12 @@ onMounted(() => {
   }, 2000);
 });
 
+onBeforeUnmount(() => {
+  try {
+    clickHandle?.remove?.();
+  } catch {}
+});
+
 // 添加点并定位到车辆位置
 const centerOnCar = (row: any) => {
   const lon = row.longitude;
@@ -508,7 +579,12 @@ const centerOnCar = (row: any) => {
     // 清理旧要素并添加新点
     if (resourceLayer.value) {
       resourceLayer.value.removeAll();
-      const marker = createMarkerGraphic([lon, lat], carIcon, { id: row.id, type: "car" });
+      const marker = createMarkerGraphic(
+        [lon, lat],
+        carIcon,
+        { id: row.id, type: "car" },
+        { width: 20, height: 24 }
+      );
       if (marker) resourceLayer.value.add(marker);
     }
     // 视图居中
@@ -517,6 +593,226 @@ const centerOnCar = (row: any) => {
     console.warn("地图视图定位失败", e);
   }
 };
+
+// 渲染车辆点位到资源图层
+const renderVehicleMarkers = () => {
+  try {
+    if (!esriModules || !gisMap.value) return;
+    if (!resourceLayer.value) {
+      resourceLayer.value = new esriModules.GraphicsLayer();
+      gisMap.value.add(resourceLayer.value);
+    }
+    resourceLayer.value.removeAll();
+    // 清理旧的 DOM 弹窗
+    try {
+      popupDomMap.forEach((el) => el?.remove?.());
+      popupDomMap.clear();
+    } catch {}
+    const data = carResourceData.value || [];
+    for (const item of data) {
+      const lon = item.longitude;
+      const lat = item.latitude;
+      if (lon == null || lat == null) continue;
+      const pid = item.id ?? item.carId ?? item.carCode ?? `${lon},${lat}`;
+      const marker = createMarkerGraphic(
+        [lon, lat],
+        carIcon,
+        { ...item, id: pid, type: "car" },
+        { width: 20, height: 24 }
+      );
+      if (marker) resourceLayer.value.add(marker);
+
+      // 创建并登记自定义 DOM 弹窗（默认隐藏）
+      const el = document.createElement("div");
+      el.style.position = "absolute";
+      el.style.transform = "translate(-50%, -100%)";
+      el.style.pointerEvents = "auto";
+      el.style.zIndex = "1001";
+      el.style.display = "none";
+      el.style.background = "rgba(0,0,0,0.75)";
+      el.style.color = "#fff";
+      el.style.padding = "8px 10px";
+      el.style.border = "1px solid rgba(255,255,255,0.2)";
+      el.style.borderRadius = "6px";
+      el.style.fontSize = "12px";
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+          <div style="font-weight:600;">${item.carCode || item.name || "车辆"}</div>
+          <button data-role="close" style="background:transparent;border:0;color:#fff;cursor:pointer;font-size:14px;line-height:1;">×</button>
+        </div>
+        <div>类型：${item.carType?.desc || "—"}</div>
+        <div>联系人：${item.contactPerson || "—"}</div>
+        <div>电话：${item.contactNumber || item.phone || "—"}</div>
+        <div>状态：${item.carStatus?.desc || item.status?.desc || "—"}</div>
+      `;
+      try {
+        const closeBtn = el.querySelector('[data-role="close"]') as HTMLElement | null;
+        closeBtn?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          el.style.display = 'none';
+        });
+      } catch {}
+      mapView.value?.container?.appendChild(el);
+      createMarkerPopup(el, [lon, lat]);
+      popupDomMap.set(pid, el);
+    }
+  } catch (e) {
+    console.warn("渲染车辆点位失败", e);
+  }
+};
+
+// 车辆数据变化时，自动刷新点位
+watch(carResourceData, () => {
+  renderVehicleMarkers();
+});
+
+// 渲染人员点位到人员图层
+const renderPersonMarkers = () => {
+  try {
+    if (!esriModules || !gisMap.value) return;
+    if (!personLayer.value) {
+      personLayer.value = new esriModules.GraphicsLayer();
+      gisMap.value.add(personLayer.value);
+    }
+    personLayer.value.removeAll();
+    // 清理旧的人员 DOM 弹窗
+    try {
+      personPopupMap.forEach((el) => el?.remove?.());
+      personPopupMap.clear();
+    } catch {}
+    const data = personResourceData.value || [];
+    for (const item of data) {
+      const lon = item.longitude ?? item.lon ?? item.lng;
+      const lat = item.latitude ?? item.lat;
+      if (lon == null || lat == null) continue;
+      const pid = item.id ?? item.userId ?? item.personId ?? item.name ?? `${lon},${lat}`;
+      const marker = createMarkerGraphic(
+        [lon, lat],
+        personIcon,
+        { ...item, id: `person_${pid}`, type: "person" },
+        { width: 18, height: 20 }
+      );
+      if (marker) personLayer.value.add(marker);
+
+      const el = document.createElement("div");
+      el.style.position = "absolute";
+      el.style.transform = "translate(-50%, -100%)";
+      el.style.pointerEvents = "auto";
+      el.style.zIndex = "1001";
+      el.style.display = "none";
+      el.style.background = "rgba(0,0,0,0.75)";
+      el.style.color = "#fff";
+      el.style.padding = "8px 10px";
+      el.style.border = "1px solid rgba(255,255,255,0.2)";
+      el.style.borderRadius = "6px";
+      el.style.fontSize = "12px";
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+          <div style="font-weight:600;">${
+            item.name || item.userName || item.personName || item.carCode || "人员"
+          }</div>
+          <button data-role="close" style="background:transparent;border:0;color:#fff;cursor:pointer;font-size:14px;line-height:1;">×</button>
+        </div>
+        ${ item.carType?.desc ? `<div>类型：${item.carType.desc}</div>` : '' }
+        <div>联系人：${ item.contactPerson || item.name || item.userName || item.personName || "—" }</div>
+        <div>联系方式：${ item.phone || item.mobile || item.contactNumber || item.tel || "—" }</div>
+        <div>状态：${ item.status?.desc || item.stateDesc || item.status || item.state || item.carStatus?.desc || "—" }</div>
+      `;
+      try {
+        const closeBtn = el.querySelector('[data-role="close"]') as HTMLElement | null;
+        closeBtn?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          el.style.display = 'none';
+        });
+      } catch {}
+      mapView.value?.container?.appendChild(el);
+      createMarkerPopup(el, [lon, lat]);
+      personPopupMap.set(`person_${pid}`, el);
+    }
+  } catch (e) {
+    console.warn("渲染人员点位失败", e);
+  }
+};
+
+// 渲染仓库点位到仓库图层
+const renderWarehouseMarkers = () => {
+  try {
+    if (!esriModules || !gisMap.value) return;
+    if (!warehouseLayer.value) {
+      warehouseLayer.value = new esriModules.GraphicsLayer();
+      gisMap.value.add(warehouseLayer.value);
+    }
+    warehouseLayer.value.removeAll();
+    // 清理旧的仓库 DOM 弹窗
+    try {
+      warehousePopupMap.forEach((el) => el?.remove?.());
+      warehousePopupMap.clear();
+    } catch {}
+    const data = warehouseResourceData.value || [];
+    for (const item of data) {
+      const lon = item.longitude ?? item.lon ?? item.lng;
+      const lat = item.latitude ?? item.lat;
+      if (lon == null || lat == null) continue;
+      const pid = item.id ?? item.warehouseId ?? item.warehouseCode ?? item.name ?? `${lon},${lat}`;
+      const marker = createMarkerGraphic(
+        [lon, lat],
+        warehouseIcon,
+        { ...item, id: `warehouse_${pid}`, type: "warehouse" },
+        { width: 20, height: 24 }
+      );
+      if (marker) warehouseLayer.value.add(marker);
+
+      const el = document.createElement("div");
+      el.style.position = "absolute";
+      el.style.transform = "translate(-50%, -100%)";
+      el.style.pointerEvents = "auto";
+      el.style.zIndex = "1001";
+      el.style.display = "none";
+      el.style.background = "rgba(0,0,0,0.75)";
+      el.style.color = "#fff";
+      el.style.padding = "8px 10px";
+      el.style.border = "1px solid rgba(255,255,255,0.2)";
+      el.style.borderRadius = "6px";
+      el.style.fontSize = "12px";
+      el.innerHTML = `
+        <div style=\"display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;\">
+          <div style=\"font-weight:600;\">${item.name || item.warehouseName || "仓库"}</div>
+          <button data-role=\"close\" style=\"background:transparent;border:0;color:#fff;cursor:pointer;font-size:14px;line-height:1;\">×</button>
+        </div>
+        <div>地址：${item.address || item.warehouseAddress || "—"}</div>
+        <div>联系人：${item.contactPerson || item.linkman || "—"}</div>
+        <div>电话：${item.contactNumber || item.phone || "—"}</div>
+      `;
+      try {
+        const closeBtn = el.querySelector('[data-role="close"]') as HTMLElement | null;
+        closeBtn?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          el.style.display = 'none';
+        });
+      } catch {}
+      mapView.value?.container?.appendChild(el);
+      createMarkerPopup(el, [lon, lat]);
+      warehousePopupMap.set(`warehouse_${pid}`, el);
+    }
+  } catch (e) {
+    console.warn("渲染仓库点位失败", e);
+  }
+};
+
+// 数据变化时自动刷新人员与仓库点位
+watch(personResourceData, () => {
+  renderPersonMarkers();
+});
+watch(warehouseResourceData, () => {
+  renderWarehouseMarkers();
+});
+
+// 人员与仓库弹窗缓存
+const personPopupMap = new Map<any, HTMLElement>();
+const warehousePopupMap = new Map<any, HTMLElement>();
+
+// 自定义弹窗 DOM 缓存：主键 -> 元素
+const popupDomMap = new Map<any, HTMLElement>();
 
 // 切换到事件详情并请求详情
 const showEventDetail = async (event: any) => {

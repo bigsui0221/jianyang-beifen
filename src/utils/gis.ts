@@ -193,7 +193,12 @@ export const getSimpleFillSymbol = (color: string = '#3A7DFF') => {
  * @param position
  * @param extData
  */
-export const createMarkerGraphic = (position: [number, number], icon: any, extData: any = {}) => {
+export const createMarkerGraphic = (
+  position: [number, number],
+  icon: any,
+  extData: any = {},
+  size: { width: number; height: number } = { width: 28, height: 34 }
+) => {
   if (!esriModules) return null
   // 1. 处理位置 - ArcGIS的Point构造函数为(longitude, latitude)
   const point = new esriModules.Point({
@@ -204,10 +209,10 @@ export const createMarkerGraphic = (position: [number, number], icon: any, extDa
   // 创建图片标记符号
   const symbol = new esriModules.PictureMarkerSymbol({
     url: icon,
-    // 根据DOM元素尺寸设置符号大小
-    width: 28,
-    height: 34,
-    yoffset: 34 / 2, // 垂直偏移使底部居中
+    // 根据尺寸设置符号大小
+    width: size.width,
+    height: size.height,
+    yoffset: size.height / 2, // 垂直偏移使底部居中
     xoffset: 0 // 水平偏移为0
   })
   return new esriModules.Graphic({
