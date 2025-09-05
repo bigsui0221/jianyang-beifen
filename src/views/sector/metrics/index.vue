@@ -185,14 +185,54 @@
 
   <!-- 公共服务：左侧占位 -->
   <div class="floating-panel left-panel" v-if="metricsState.sceneActive === 'publicService'">
-    <div class="panel-container">
+    <div class="panel-container fill">
       <div class="container-header">
         <div class="header-icon"><i class="icon-supervision"></i></div>
-        <h3>公共服务 - 左侧</h3>
+        <h3>供水量概况</h3>
       </div>
       <div class="container-content">
-        <div class="metric-cards">
-          <div class="metric-card"><div class="card-label">占位</div><div class="card-value">--</div></div>
+        <el-tabs v-model="metricsState.service.active" class="tabs-compact">
+          <el-tab-pane
+            v-for="(s, sIdx) in metricsState.service.list"
+            :key="sIdx"
+            :label="s.stationName || `供水厂${sIdx+1}`"
+            :name="String(sIdx)"
+          />
+        </el-tabs>
+
+        <div class="metric-cards row-cards two-rows">
+          <div class="metric-card">
+            <div class="card-label">今日计划供水量</div>
+            <div class="card-value">{{ metricsState.currentSupply?.todayPlanNum ?? '-' }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">今日供水量</div>
+            <div class="card-value">{{ metricsState.currentSupply?.todaySupplyNum ?? '-' }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">昨日供水量</div>
+            <div class="card-value">{{ metricsState.currentSupply?.yesterdaySupplyNum ?? '-' }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">当月供水量总计</div>
+            <div class="card-value">{{ metricsState.currentSupply?.thisMonthNum ?? '-' }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">当年供水量总计</div>
+            <div class="card-value">{{ metricsState.currentSupply?.thisYearNum ?? '-' }}</div>
+          </div>
+        </div>
+
+        <!-- 月供水量统计柱状图 -->
+        <div class="chart-title">月供水量统计</div>
+        <div class="chart-wrapper" style="margin-top: 8px; height: 260px;">
+          <EChart :options="metricsState.serviceMonthChartOptions" width="100%" height="100%" />
+        </div>
+
+        <!-- 近七日供水量统计（实供 vs 计划） -->
+        <div class="chart-title" style="margin-top: 8px;">近七日供水量统计</div>
+        <div class="chart-wrapper" style="margin-top: 12px; height: 220px;">
+          <EChart :options="metricsState.serviceWeekChartOptions" width="100%" height="100%" />
         </div>
       </div>
     </div>
@@ -344,15 +384,72 @@
   </div>
 
   <!-- 公共服务：右侧占位 -->
-  <div class="floating-panel right-panel" v-if="metricsState.sceneActive === 'publicService'">
+  <div class="floating-panel right-panel right-two-panels" v-if="metricsState.sceneActive === 'publicService'">
+    <!-- 右1：仅展示三个水厂 PH/浊度/余氯 -->
     <div class="panel-container">
       <div class="container-header">
         <div class="header-icon"><i class="icon-supervision"></i></div>
-        <h3>公共服务 - 右侧</h3>
+        <h3>出水水质检测</h3>
       </div>
       <div class="container-content">
-        <div class="metric-cards">
-          <div class="metric-card"><div class="card-label">占位</div><div class="card-value">--</div></div>
+        <div class="ps-top3">
+          <div class="plant-block" v-for="item in metricsState.serviceQualityTop3" :key="item.id">
+            <div class="plant-title">
+              <span>{{ item.stationName }}</span>
+              <el-button size="small" type="primary" text @click="metricsState.goPlantDetail(item)">查看全部</el-button>
+            </div>
+            <div class="row-cards compact">
+              <div class="metric-card">
+                <div class="card-label">PH</div>
+                <div class="card-value">{{ item.publicHealth }}</div>
+              </div>
+              <div class="metric-card">
+                <div class="card-label">浊度(NTU)</div>
+                <div class="card-value">{{ item.turbidity }}</div>
+              </div>
+              <div class="metric-card">
+                <div class="card-label">余氯(mg/L)</div>
+                <div class="card-value">{{ item.residualChlorine }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右2：完整表格放这里 -->
+    <div class="panel-container">
+      <div class="container-header">
+        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <h3>出水水质检测数据</h3>
+      </div>
+      <div class="container-content">
+        <div class="stats-row">
+          <div class="metric-card">
+            <div class="card-label">监测点总数</div>
+            <div class="card-value">{{ metricsState.serviceNetworkStat.totalNum }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">压力报警数</div>
+            <div class="card-value">{{ metricsState.serviceNetworkStat.pressureAlarmNum }}</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">水质报警数</div>
+            <div class="card-value">{{ metricsState.serviceNetworkStat.potabilityAlarmNum }}</div>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <el-table :data="metricsState.serviceNetworkQuality" height="100%" stripe border>
+            <el-table-column prop="stationName" label="监测点" width="160" />
+            <el-table-column prop="pressure" label="压力(MPa)" width="120" />
+            <el-table-column prop="residualChlorine" label="余氯(mg/L)" width="130" />
+            <el-table-column prop="turbidity" label="浊度(NTU)" width="120" />
+            <el-table-column label="操作" width="80" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" plain @click="metricsState.centerOnPoint(row)">定位</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
       </div>
     </div>
@@ -379,21 +476,24 @@
 // @ts-nocheck
 import { shallowRef, reactive, onMounted, ref, computed, watch } from 'vue'
 import { initGisMap, esriModules, createMarkerGraphic, createMarkerPopup, updateAllPopupPositions, popups } from '@/utils/gis'
-import { MetricsAPI, MetricsManagementAPI } from '@/api/sector/metrics'
+import { MetricsAPI, MetricsManagementAPI, MetricsServiceAPI } from '@/api/sector/metrics'
 import riverIcon from '@/assets/imgs/sector/河道水情.png'
 import reservoirIcon from '@/assets/imgs/sector/水位监测.png'
 import tunnelIcon from '@/assets/imgs/sector/下穿隧道.png'
 import pondingIcon from '@/assets/imgs/sector/内涝点.png'
 import plantIcon from '@/assets/imgs/sector/污水站.png'
 import liquidIcon from '@/assets/imgs/sector/液位检测点.png'
+import waterQualityIcon from '@/assets/imgs/sector/水质监测点.png'
 import iconSecure from '@/assets/imgs/sector/公共安全.png'
 import iconManage from '@/assets/imgs/sector/公共管理.png'
 import iconService from '@/assets/imgs/sector/公共服务.png'
 import { useMetricsScene } from './useMetricsScene'
 import EChart from '@/components/Echart/src/Echart.vue'
+import { useRouter } from 'vue-router'
 
 const gisMap = shallowRef<any>(null);
 const mapView = shallowRef<any>(null);
+const router = useRouter()
 const metricsLayer = shallowRef<any>(null);
 const popupDomList: HTMLElement[] = [];
 // 右3 图表配置
@@ -486,6 +586,72 @@ const buildPmRiverChartOptions = (list: any[]) => {
 
 // 右3 图表：保持与接口同步
 
+// 公共服务 - 月供水量图表配置
+const serviceMonthChartOptions = ref<any>({})
+const buildServiceMonthChartOptions = (list: any[]) => {
+  const months = (list || []).map((i: any) => i?.statisticsDate ?? '-')
+  const monthSupply = (list || []).map((i: any) => i?.monthSupplyNum ?? 0)
+  const sequential = (list || []).map((i: any) => i?.sequentialSupplyNum ?? 0)
+  return {
+    color: ['#66A9FF', '#34D399'],
+    tooltip: { trigger: 'axis' },
+    grid: { left: 36, right: 16, top: 24, bottom: 28, containLabel: true },
+    legend: { data: ['本月供水量', '去年同期'], textStyle: { color: '#e6f4ff' } },
+    xAxis: [{
+      type: 'category',
+      data: months,
+      axisLabel: { color: '#cfe8ff' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.25)' } },
+      axisTick: { show: false }
+    }],
+    yAxis: [{
+      type: 'value',
+      name: '供水量',
+      nameTextStyle: { color: '#cfe8ff' },
+      axisLabel: { color: '#cfe8ff' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.25)' } }
+    }],
+    series: [
+      { name: '本月供水量', type: 'bar', barWidth: 14, data: monthSupply },
+      { name: '去年同期', type: 'bar', barWidth: 14, data: sequential }
+    ]
+  }
+}
+
+// 公共服务 - 近七日供水量图表配置
+const serviceWeekChartOptions = ref<any>({})
+const buildServiceWeekChartOptions = (list: any[]) => {
+  const days = (list || []).map((i: any) => i?.statisticsDate ?? '-')
+  const supplied = (list || []).map((i: any) => i?.thatDaySupplyNum ?? 0)
+  const planned = (list || []).map((i: any) => i?.thatDayPlanNum ?? 0)
+  return {
+    color: ['#66A9FF', '#FFD166'],
+    tooltip: { trigger: 'axis' },
+    grid: { left: 36, right: 16, top: 24, bottom: 28, containLabel: true },
+    legend: { data: ['实供', '计划'], textStyle: { color: '#e6f4ff' } },
+    xAxis: [{
+      type: 'category',
+      data: days,
+      axisLabel: { color: '#cfe8ff' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.25)' } },
+      axisTick: { show: false }
+    }],
+    yAxis: [{
+      type: 'value',
+      name: '供水量',
+      nameTextStyle: { color: '#cfe8ff' },
+      axisLabel: { color: '#cfe8ff' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.25)' } }
+    }],
+    series: [
+      { name: '实供', type: 'line', smooth: true, showSymbol: false, data: supplied },
+      { name: '计划', type: 'line', smooth: true, showSymbol: false, data: planned }
+    ]
+  }
+}
+
 /** 格式化毫秒时间戳为 YYYY/MM/DD HH:mm:ss */
 function formatTime(ts?: number | string) {
   if (!ts) return '-'
@@ -541,6 +707,31 @@ metricsState.pmRiverPatrol = reactive({
   caseClosureRate: '-',
   detailList: [] as any[]
 })
+
+// 公共服务 - 供水量概况
+metricsState.service = reactive({
+  list: [] as any[],
+  active: '0' as string
+})
+// 公共服务 - 出水水质（右1）
+metricsState.serviceQuality = reactive<any[]>([])
+metricsState.serviceQualityStats = reactive({
+  total: 0,
+  avgPublicHealth: '-',
+  avgTurbidity: '-',
+  avgResidualChlorine: '-'
+} as any)
+// 公共服务 - 管网水质（右2表格）
+metricsState.serviceNetworkQuality = reactive<any[]>([])
+metricsState.serviceNetworkStat = reactive({ totalNum: 0, pressureAlarmNum: 0, potabilityAlarmNum: 0 })
+// 暴露月供水量图表给模板
+// @ts-ignore
+// eslint-disable-next-line
+metricsState.serviceMonthChartOptions = serviceMonthChartOptions
+// 暴露七日供水量图表给模板
+// @ts-ignore
+// eslint-disable-next-line
+metricsState.serviceWeekChartOptions = serviceWeekChartOptions
 
 const initMap = async () => {
   console.log('初始化地图')
@@ -679,6 +870,93 @@ const fetchAllManagementAndLog = async () => {
   }
 }
 
+// 打印“公共服务”全部接口返回
+const fetchAllServiceAndLog = async () => {
+  try {
+    const [
+      waterQualityData,
+      networkWaterQualityData,
+      waterSupplyPointStat
+    ] = await Promise.all([
+      MetricsServiceAPI.getWaterQualityData(),
+      MetricsServiceAPI.getNetworkWaterQualityData(),
+      MetricsServiceAPI.getWaterSupplyPointStat()
+    ])
+
+    console.log('[Service] getWaterQualityData', waterQualityData)
+    console.log('[Service] getNetworkWaterQualityData', networkWaterQualityData)
+    console.log('[Service] getWaterSupplyPointStat', waterSupplyPointStat)
+
+    // 映射出水水质检测 → 右1
+    try {
+      const list: any[] = Array.isArray(waterQualityData as any) ? (waterQualityData as any) : []
+      metricsState.serviceQuality.splice(0, metricsState.serviceQuality.length, ...list.map((it: any) => ({
+        id: it?.id,
+        stationName: it?.stationName ?? '-',
+        publicHealth: it?.publicHealth ?? '-',
+        turbidity: it?.turbidity ?? '-',
+        residualChlorine: it?.residualChlorine ?? '-',
+        longitude: it?.longitude,
+        latitude: it?.latitude
+      })))
+      const n = metricsState.serviceQuality.length
+      metricsState.serviceQualityStats.total = n
+      if (n > 0) {
+        const avg = (arr: number[]) => (arr.reduce((a, b) => a + (Number(b) || 0), 0) / n)
+        const ph = avg(metricsState.serviceQuality.map((i: any) => Number(i.publicHealth) || 0))
+        const turb = avg(metricsState.serviceQuality.map((i: any) => Number(i.turbidity) || 0))
+        const rc = avg(metricsState.serviceQuality.map((i: any) => Number(i.residualChlorine) || 0))
+        metricsState.serviceQualityStats.avgPublicHealth = ph.toFixed(3)
+        metricsState.serviceQualityStats.avgTurbidity = turb.toFixed(3)
+        metricsState.serviceQualityStats.avgResidualChlorine = rc.toFixed(3)
+      } else {
+        metricsState.serviceQualityStats.avgPublicHealth = '-'
+        metricsState.serviceQualityStats.avgTurbidity = '-'
+        metricsState.serviceQualityStats.avgResidualChlorine = '-'
+      }
+    } catch {}
+
+    // 映射管网水质检测 → 右2（兼容对象含统计与 dataList 的结构）
+    try {
+      const nw = networkWaterQualityData as any
+      // 统计
+      if (nw && typeof nw === 'object' && !Array.isArray(nw)) {
+        metricsState.serviceNetworkStat.totalNum = nw?.totalNum ?? 0
+        metricsState.serviceNetworkStat.pressureAlarmNum = nw?.pressureAlarmNum ?? 0
+        metricsState.serviceNetworkStat.potabilityAlarmNum = nw?.potabilityAlarmNum ?? 0
+      } else {
+        metricsState.serviceNetworkStat.totalNum = Array.isArray(nw) ? nw.length : 0
+        metricsState.serviceNetworkStat.pressureAlarmNum = 0
+        metricsState.serviceNetworkStat.potabilityAlarmNum = 0
+      }
+      const list: any[] = Array.isArray(nw) ? nw : (Array.isArray(nw?.dataList) ? nw.dataList : [])
+      metricsState.serviceNetworkQuality.splice(0, metricsState.serviceNetworkQuality.length, ...list.map((it: any) => ({
+        id: it?.id,
+        stationName: it?.stationName ?? '-',
+        pressure: it?.pressure ?? '-',
+        residualChlorine: it?.residualChlorine ?? '-',
+        turbidity: it?.turbidity ?? '-',
+        longitude: it?.longitude,
+        latitude: it?.latitude
+      })))
+    } catch {}
+
+    // 同步供水厂数据到状态
+    try {
+      const list: any[] = Array.isArray(waterSupplyPointStat as any) ? (waterSupplyPointStat as any) : []
+      metricsState.service.list = list
+      if (list.length > 0) {
+        const idx = Number(metricsState.service.active)
+        if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) {
+          metricsState.service.active = '0'
+        }
+      }
+    } catch {}
+  } catch (e) {
+    console.error('fetchAllServiceAndLog error', e)
+  }
+}
+
 // metrics 页面内的场景切换（默认公共安全）
 const sceneCtx = useMetricsScene()
 metricsState.sceneActive = sceneCtx.active
@@ -688,6 +966,7 @@ onMounted(() => {
   initMap()
   fetchAllMetrics()
   fetchAllManagementAndLog()
+  fetchAllServiceAndLog()
 })
 
 /** 根据当前场景/Tab 返回图标与弹窗标题 */
@@ -695,6 +974,10 @@ const getLayerAsset = () => {
   // 公共管理：根据条目类型选择图标（管网/污水厂）
   if (metricsState.sceneActive === 'publicManagement') {
     return { icon: liquidIcon, title: '管网与污水厂' }
+  }
+  // 公共服务：使用水质监测点图标
+  if (metricsState.sceneActive === 'publicService') {
+    return { icon: waterQualityIcon, title: '公共服务' }
   }
   // 公共安全：依据 Tab
   const type = metricsState.panel.activeTab
@@ -729,7 +1012,12 @@ const renderMetricMarkers = () => {
   cleanupPopups()
 
   const { icon, title } = getLayerAsset()
-  const list = metricsState.sceneActive === 'publicManagement' ? ([...(metricsState.pmPipes || []), ...(metricsState.pmPlants || [])]) : (currentList.value || [])
+  const list =
+    metricsState.sceneActive === 'publicManagement'
+      ? ([...(metricsState.pmPipes || []), ...(metricsState.pmPlants || [])])
+      : metricsState.sceneActive === 'publicService'
+        ? (metricsState.serviceNetworkQuality || [])
+        : (currentList.value || [])
   console.log('metrics.renderMarkers', metricsState.panel.activeTab, 'listLen=', list.length, icon)
   for (const item of list) {
     const lon = item?.longitude
@@ -752,7 +1040,7 @@ const renderMetricMarkers = () => {
     el.style.position = 'absolute'
     el.style.transform = 'translate(-50%, -100%)'
     el.style.pointerEvents = 'auto'
-    el.style.zIndex = '1001'
+    el.style.zIndex = '800'
     el.style.display = 'none'
     el.style.background = 'rgba(0,0,0,0.75)'
     el.style.color = '#fff'
@@ -760,9 +1048,20 @@ const renderMetricMarkers = () => {
     el.style.border = '1px solid rgba(255,255,255,0.2)'
     el.style.borderRadius = '6px'
     el.style.fontSize = '12px'
-    el.innerHTML = `<div style="font-weight:600;margin-bottom:2px;">${title}</div>
-      <div>${item?.stationName ?? item?.name ?? '-'}</div>
-      <div style="opacity:.8;">${formatTime(item?.collectionTime)}</div>`
+    // 公共服务：标题使用点位名称，展示关键指标
+    if (metricsState.sceneActive === 'publicService') {
+      const lines = [
+        `<div><b>压力：</b>${item?.pressure ?? '-'} MPa</div>`,
+        `<div><b>余氯：</b>${item?.residualChlorine ?? '-'} mg/L</div>`,
+        `<div><b>浊度：</b>${item?.turbidity ?? '-'} NTU</div>`
+      ].join('')
+      const titleText = item?.stationName ?? '-'
+      el.innerHTML = `<div style="font-weight:600;margin-bottom:4px;">${titleText}</div>${lines}`
+    } else {
+      el.innerHTML = `<div style="font-weight:600;margin-bottom:2px;">${title}</div>
+        <div>${item?.stationName ?? item?.name ?? '-'}</div>
+        <div style="opacity:.8;">${formatTime(item?.collectionTime)}</div>`
+    }
     mapView.value.container?.appendChild(el)
     popupDomList.push(el)
     createMarkerPopup(el, [lon, lat])
@@ -826,6 +1125,41 @@ const columnsMap = {
 } as const
 
 metricsState.panelColumns = computed(() => columnsMap[metricsState.panel.activeTab])
+
+// 当前供水厂数据
+metricsState.currentSupply = computed<any>(() => {
+  try {
+    const list = (metricsState.service?.list || []) as any[]
+    const idx = Number(metricsState.service?.active || '0')
+    return list?.[idx] ?? null
+  } catch {
+    return null
+  }
+})
+
+// 监听当前供水厂变化并更新图表
+watch(
+  () => [metricsState.service.active, metricsState.service.list],
+  () => {
+    try {
+      const list = (metricsState.currentSupply?.monthSupplyList || []) as any[]
+      serviceMonthChartOptions.value = buildServiceMonthChartOptions(list)
+      const week = (metricsState.currentSupply?.weekSupplyList || []) as any[]
+      serviceWeekChartOptions.value = buildServiceWeekChartOptions(week)
+    } catch {}
+  },
+  { deep: true }
+)
+
+// 右1展示前三个厂的水质数据
+metricsState.serviceQualityTop3 = computed<any[]>(() => {
+  try {
+    const list = metricsState.serviceQuality as any[]
+    return (list || []).slice(0, 3)
+  } catch {
+    return []
+  }
+})
 
 const currentList = computed<any[]>(() => {
   switch (metricsState.panel.activeTab) {
@@ -969,6 +1303,13 @@ metricsState.centerOnPoint = (row: any) => {
   } catch (e) {
     console.warn('地图视图定位失败', e)
   }
+}
+
+// 跳转水厂详情
+metricsState.goPlantDetail = (row: any) => {
+  const id = row?.id ?? row?.plantId
+  if (id == null) return
+  router.push({ name: 'MetricsPlantDetail', params: { id } })
 }
 </script>
 <style lang="scss" scoped>
@@ -1124,7 +1465,7 @@ metricsState.centerOnPoint = (row: any) => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  height: calc(100vh - 100px); /* 设定固定可用高度，便于子项按比例分配 */
+  height: calc(100vh - 100px); /* 顶部80 + 底部20 留出同上间距 */
   overflow-y: auto;
   
   &.left-panel {
@@ -1137,6 +1478,48 @@ metricsState.centerOnPoint = (row: any) => {
     width: 480px;
   }
 }
+
+/* 公共服务：右侧两个面板共享高度，分别各占 1/2 */
+.right-two-panels {
+  height: calc(100vh - 100px);
+}
+.right-two-panels > .panel-container {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+}
+.right-two-panels > .panel-container .container-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 公共服务右1 顶部三厂块样式 */
+.ps-top3 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ps-top3 .plant-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ps-top3 .plant-title {
+  color: #e6f4ff;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.row-cards.compact {
+  gap: 12px;
+}
+.row-cards.compact .metric-card { padding: 12px; }
+.row-cards.compact .metric-card .card-label { font-size: 12px; margin-bottom: 6px; }
+.row-cards.compact .metric-card .card-value { font-size: 20px; }
 
 /* 公共管理两个右侧浮窗的垂直分布 */
 .right-panel--stats {
@@ -1264,6 +1647,10 @@ metricsState.centerOnPoint = (row: any) => {
   }
 }
 
+.panel-container.fill {
+  height: 100%;
+}
+
 /* 左侧三个面板的纵向比例控制（1:2:3） */
 .left-panel .panel-container.flex-1 { flex: 1 1 0; }
 .left-panel .panel-container.flex-2 { flex: 2 1 0; }
@@ -1385,6 +1772,14 @@ metricsState.centerOnPoint = (row: any) => {
   display: flex;
 }
 
+.chart-title {
+  margin-top: 10px;
+  color: #e6f4ff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
 /* 右3 上方卡片：紧凑样式 */
 .stats-row--compact .metric-card { padding: 12px; }
 .stats-row--compact .metric-card .card-label { font-size: 11px; margin-bottom: 6px; }
@@ -1398,9 +1793,11 @@ metricsState.centerOnPoint = (row: any) => {
 }
 
 .row-cards {
+  display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .row-cards .metric-card {
@@ -1408,6 +1805,16 @@ metricsState.centerOnPoint = (row: any) => {
   min-width: 0;
   padding: 14px;
 }
+
+/* 两行卡片排布：5张卡片在两行内自动换行 */
+/* 更均匀的两行卡片排布：第一行 3 列，第二行 2 列 */
+.two-rows {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+.two-rows .metric-card { grid-column: span 2; }
+.two-rows .metric-card:nth-child(n+4) { grid-column: span 3; }
 
 /* 左1横排卡片（公共管理-污水处理检测）缩小字号与卡片内边距，避免溢出 */
 .left-panel .row-cards .metric-card .card-label {
@@ -1511,6 +1918,26 @@ metricsState.centerOnPoint = (row: any) => {
   :deep(.el-table .cell) { color: inherit; }
   :deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
     background: rgba(255, 255, 255, 0.03);
+  }
+}
+/* 左侧面板 Tabs 样式（去掉白色边线，统一深色风格） */
+.left-panel {
+  :deep(.el-tabs__header) {
+    margin: 0 0 6px;
+    border-bottom: 0 none;
+  }
+  :deep(.el-tabs__nav-wrap::after) { /* 移除底部分隔线 */
+    height: 0 !important;
+  }
+  :deep(.el-tabs__item) {
+    color: #cfe8ff;
+  }
+  :deep(.el-tabs__item.is-active) {
+    color: #ffffff;
+    font-weight: 600;
+  }
+  :deep(.el-tabs__active-bar) {
+    background-color: #66A9FF;
   }
 }
 

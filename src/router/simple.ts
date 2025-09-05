@@ -73,6 +73,14 @@ export const simpleRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'metrics/plant/:id',
+        name: 'MetricsPlantDetail',
+        component: () => import('@/views/sector/metrics/PlantDetail.vue'),
+        meta: {
+          title: '水厂详情'
+        }
+      },
+      {
         path: 'dispatch',
         name: 'Dispatch',
         component: () => import('@/views/sector/dispatch/index.vue'),

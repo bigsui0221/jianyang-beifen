@@ -1,5 +1,15 @@
 import request from '@/config/axios'
 
+// 统一查询参数类型（分页 + 条件）
+export type MetricsQueryParams = Partial<{
+  pageNo: number
+  pageSize: number
+  stationName: string
+  location: string
+  collectionStartTime: string
+  collectionEndTime: string
+}>
+
 // 公共安全
 export const MetricsAPI = {
   /** 获取内涝点数据 */
@@ -63,3 +73,38 @@ export const MetricsManagementAPI = {
 
 // 公共服务
 
+export const MetricsServiceAPI = {
+  /** 获取出厂水水质监测数据 */
+  getWaterQualityData: async () => {
+    return await request.get({ url: `/sector/public-utility/getFactoryWaterMonitor` })
+  },
+  /** 获取管网水质监测数据 */
+  getNetworkWaterQualityData: async () => {
+    return await request.get({ url: `/sector/public-utility/getPipelineWaterMonitor` })
+  },
+  /** 获取管网水质监测点统计 */
+  getWaterSupplyPointStat: async () => {
+    return await request.get({ url: `/sector/public-utility/getWaterSupply` })
+  }
+}
+
+// 公共服务详情页
+
+export const MetricsServiceDetailAPI = {
+  /** 获取污水处理监测数据 */
+  getSewagePlantData: async (params?: MetricsQueryParams) => {
+    return await request.get({ url: `/sector/statistics-data/getSewageMonitorData`, params })
+  },
+  /** 获取污水处理监测点统计 */
+  getSewagePlantPointStat: async (params?: MetricsQueryParams) => {
+    return await request.get({ url: `/sector/statistics-data/getDrainageMonitorData`, params })
+  },
+  /** 获取供水水质监测数据 */
+  getWaterQualityData: async (params?: MetricsQueryParams) => {
+    return await request.get({ url: `/sector/statistics-data/getWaterSupplyMonitorData`, params })
+  },
+  /** 获取供水水质监测点统计 */
+  getWaterQualityPointStat: async (params?: MetricsQueryParams) => {
+    return await request.get({ url: `/sector/statistics-data/getPipelineWaterMonitorData`, params })
+  }
+}
