@@ -108,3 +108,63 @@ export const MetricsServiceDetailAPI = {
     return await request.get({ url: `/sector/statistics-data/getPipelineWaterMonitorData`, params })
   }
 }
+
+// 事件概览
+export const MetricsEventOverviewAPI = {
+  /** 获取事件列表 */
+  getEventList: async (params?: MetricsQueryParams) => {
+    return await request.get({ url: `/sector/event-overview/getEventList`, params })
+  },
+  /** 获取事件统计 */
+  getEventStat: async () => {
+    return await request.get({ url: `/sector/event-overview/getEventStatistics` })
+  },
+  /** 获取事件概况 */
+  getEventOverview: async () => {
+    return await request.get({ url: `/sector/event-overview/getEventSummary` })
+  },
+  /** 获取消息通知 */
+  getMessageNotification: async () => {
+    return await request.get({ url: `/sector/event-overview/getMessageAlert` })
+  }
+}
+
+// 场所保障
+export const MetricsVenuesAPI = {
+  /** 获取防汛重点场所 */
+  getFloodControlVenues: async () => {
+    return await request.get({ url: `/sector/key-venue/getFloodKeyVenue` })
+  },
+  /** 获取防汛保障监测数据 */
+  getFloodControlMonitorData: async () => {
+    return await request.get({ url: `/sector/key-venue/getFloodMonitorData` })
+  },
+  /** 获取雨量分布 */
+  getRainfallDistribution: async () => {
+    return await request.get({ url: `/sector/key-venue/getRainfallDistribution` })
+  },
+  /** 获取督导检查 */
+  getSupervisionCheck: async () => {
+    return await request.get({ url: `/sector/key-venue/getSupervisionInspection` })
+  },
+  /** 获取供排水重点场所 */
+  getWaterSupplyDrainageVenues: async () => {
+    return await request.get({ url: `/sector/key-venue/getSupplyKeyVenue` })
+  },
+  /** 获取供排水保障监测数据 */
+  getWaterSupplyDrainageMonitorData: async () => {
+    return await request.get({ url: `/sector/key-venue/getSupplyMonitorData` })
+  },
+  /** 获取预警信息 */
+  getWarningInfo: async () => {
+    return await request.get({ url: `/sector/key-venue/getWarningInfo` })
+  },
+  /** 获取水环境重点场所 */
+  getWaterEnvironmentVenues: async () => {
+    return await request.get({ url: `/sector/key-venue/getWaterKeyVenue` })
+  },
+  /** 获取水环境保障监测数据 */
+  getWaterEnvironmentMonitorData: async () => {
+    return await request.get({ url: `/sector/key-venue/getWaterMonitorData` })
+  }
+}

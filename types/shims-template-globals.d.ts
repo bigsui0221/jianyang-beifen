@@ -3,3 +3,5 @@
 declare const metricsState: any
 declare function formatTime(ts?: number | string): string
 declare function getWarningTagClass(levelName?: string): string
+// 事件概况页模板使用到的顶层变量
+declare const eventOverviewData: any

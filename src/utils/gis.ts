@@ -199,27 +199,51 @@ export const createMarkerGraphic = (
   extData: any = {},
   size: { width: number; height: number } = { width: 28, height: 34 }
 ) => {
-  if (!esriModules) return null
-  // 1. 处理位置 - ArcGIS的Point构造函数为(longitude, latitude)
-  const point = new esriModules.Point({
-    longitude: position[0],
-    latitude: position[1],
-    spatialReference: { wkid: 4326 } // WGS84坐标系，与高德默认一致
+  console.log('createMarkerGraphic 调用:', {
+    position,
+    icon,
+    extData,
+    size,
+    esriModules: !!esriModules
   })
-  // 创建图片标记符号
-  const symbol = new esriModules.PictureMarkerSymbol({
-    url: icon,
-    // 根据尺寸设置符号大小
-    width: size.width,
-    height: size.height,
-    yoffset: size.height / 2, // 垂直偏移使底部居中
-    xoffset: 0 // 水平偏移为0
-  })
-  return new esriModules.Graphic({
-    geometry: point,
-    symbol: symbol,
-    attributes: extData // 对应AMap的extData
-  })
+
+  if (!esriModules) {
+    console.error('esriModules 未加载')
+    return null
+  }
+
+  try {
+    // 1. 处理位置 - ArcGIS的Point构造函数为(longitude, latitude)
+    const point = new esriModules.Point({
+      longitude: position[0],
+      latitude: position[1],
+      spatialReference: { wkid: 4326 } // WGS84坐标系，与高德默认一致
+    })
+    console.log('创建点对象:', point)
+
+    // 创建图片标记符号
+    const symbol = new esriModules.PictureMarkerSymbol({
+      url: icon,
+      // 根据尺寸设置符号大小
+      width: size.width,
+      height: size.height,
+      yoffset: size.height / 2, // 垂直偏移使底部居中
+      xoffset: 0 // 水平偏移为0
+    })
+    console.log('创建符号对象:', symbol)
+
+    const graphic = new esriModules.Graphic({
+      geometry: point,
+      symbol: symbol,
+      attributes: extData // 对应AMap的extData
+    })
+    console.log('创建图形对象:', graphic)
+
+    return graphic
+  } catch (error) {
+    console.error('创建标记图形时出错:', error)
+    return null
+  }
 }
 
 /**
@@ -291,13 +315,34 @@ export const updateAllPopupPositions = () => {
  * @param point
  */
 export const updatePopupPosition = (element: HTMLElement, point: any) => {
-  if (!mapView) return
-  // 将地图坐标转换为屏幕坐标
-  const screenPoint = mapView.toScreen(point)
-  if (screenPoint) {
-    // 设置弹窗位置（偏移一点，避免与标记重叠）
-    element.style.left = `${screenPoint.x - 14}px`
-    element.style.top = `${screenPoint.y - 34}px`
+  if (!mapView) {
+    console.warn('mapView未初始化，无法更新弹窗位置')
+    return
+  }
+
+  try {
+    // 将地图坐标转换为屏幕坐标
+    const screenPoint = mapView.toScreen(point)
+    if (screenPoint && screenPoint.x !== undefined && screenPoint.y !== undefined) {
+      // 设置弹窗位置（偏移一点，避免与标记重叠）
+      const offsetX = 14
+      const offsetY = 50 // 增加垂直偏移，确保弹窗在标记上方
+      element.style.left = `${screenPoint.x - offsetX}px`
+      element.style.top = `${screenPoint.y - offsetY}px`
+
+      // 调试信息
+      if (element.style.display === 'block') {
+        console.log('更新弹窗位置:', {
+          geographic: [point.longitude, point.latitude],
+          screen: [screenPoint.x, screenPoint.y],
+          final: [screenPoint.x - offsetX, screenPoint.y - offsetY]
+        })
+      }
+    } else {
+      console.warn('无法获取屏幕坐标:', screenPoint)
+    }
+  } catch (error) {
+    console.error('更新弹窗位置时出错:', error)
   }
 }
 

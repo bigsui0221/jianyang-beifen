@@ -458,15 +458,15 @@
   <!-- 底部三项操作 -->
   <div class="bottom-actions">
     <div class="action-item secure" @click="metricsState.setScene('publicSecurity')">
-      <div class="action-icon"><img :src="iconSecure" alt="公共安全" /></div>
+      <div class="action-icon"><img :key="'secure-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicSecurity' ? iconSecureActive : iconSecure" alt="公共安全" /></div>
       <div class="action-label">公共安全</div>
     </div>
     <div class="action-item manage" @click="metricsState.setScene('publicManagement')">
-      <div class="action-icon"><img :src="iconManage" alt="公共管理" /></div>
+      <div class="action-icon"><img :key="'manage-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicManagement' ? iconManageActive : iconManage" alt="公共管理" /></div>
       <div class="action-label">公共管理</div>
     </div>
     <div class="action-item service" @click="metricsState.setScene('publicService')">
-      <div class="action-icon"><img :src="iconService" alt="公共服务" /></div>
+      <div class="action-icon"><img :key="'service-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicService' ? iconServiceActive : iconService" alt="公共服务" /></div>
       <div class="action-label">公共服务</div>
     </div>
   </div>
@@ -487,6 +487,9 @@ import waterQualityIcon from '@/assets/imgs/sector/水质监测点.png'
 import iconSecure from '@/assets/imgs/sector/公共安全.png'
 import iconManage from '@/assets/imgs/sector/公共管理.png'
 import iconService from '@/assets/imgs/sector/公共服务.png'
+import iconSecureActive from '@/assets/imgs/sector/publicsafe-active.png'
+import iconManageActive from '@/assets/imgs/sector/publimagc-active.png'
+import iconServiceActive from '@/assets/imgs/sector/publickserve-active.png'
 import { useMetricsScene } from './useMetricsScene'
 import EChart from '@/components/Echart/src/Echart.vue'
 import { useRouter } from 'vue-router'
