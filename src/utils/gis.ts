@@ -332,11 +332,11 @@ export const updatePopupPosition = (element: HTMLElement, point: any) => {
 
       // 调试信息
       if (element.style.display === 'block') {
-        console.log('更新弹窗位置:', {
-          geographic: [point.longitude, point.latitude],
-          screen: [screenPoint.x, screenPoint.y],
-          final: [screenPoint.x - offsetX, screenPoint.y - offsetY]
-        })
+        // console.log('更新弹窗位置:', {
+        //   geographic: [point.longitude, point.latitude],
+        //   screen: [screenPoint.x, screenPoint.y],
+        //   final: [screenPoint.x - offsetX, screenPoint.y - offsetY]
+        // })
       }
     } else {
       console.warn('无法获取屏幕坐标:', screenPoint)

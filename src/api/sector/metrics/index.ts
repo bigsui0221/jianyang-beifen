@@ -168,3 +168,61 @@ export const MetricsVenuesAPI = {
     return await request.get({ url: `/sector/key-venue/getWaterMonitorData` })
   }
 }
+
+// 防汛保障
+export const FloodControlAPI = {
+  /** 获取内涝水位监测 */
+  getInnerFloodWaterLevelMonitor: async (id: number) => {
+    return await request.get({ url: `/sector/flood-guarantee/getFloodMonitor`, params: { id } })
+  },
+  /** 获取内涝水位监测详情 */
+  getInnerFloodWaterLevelMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getFloodMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取雨情监测 */
+  getRainfallMonitor: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getRainMonitor`,
+      params: { id }
+    })
+  },
+  /** 获取雨情监测详情 */
+  getRainfallMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getRainMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取河道水位监测 */
+  getRiverWaterLevelMonitor: async (id: number) => {
+    return await request.get({ url: `/sector/flood-guarantee/getRiverMonitor`, params: { id } })
+  },
+  /** 获取河道水位监测详情 */
+  getRiverWaterLevelMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getRiverMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取关联路线详情 */
+  getAssociatedRouteDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getRouteDetail`,
+      params: { id }
+    })
+  },
+  /** 获取隧道水位监测 */
+  getTunnelWaterLevelMonitor: async (id: number) => {
+    return await request.get({ url: `/sector/flood-guarantee/getTunnelMonitor`, params: { id } })
+  },
+  /** 获取隧道水位监测详情 */
+  getTunnelWaterLevelMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/flood-guarantee/getTunnelMonitorDetail`,
+      params: { id }
+    })
+  }
+}

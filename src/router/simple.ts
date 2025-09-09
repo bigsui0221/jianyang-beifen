@@ -97,6 +97,30 @@ export const simpleRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'venues/flood-control/:id',
+        name: 'VenuesFloodControl',
+        component: () => import('@/views/sector/venues/FloodControl.vue'),
+        meta: {
+          title: '防汛保障'
+        }
+      },
+      {
+        path: 'venues/water-environment/:id',
+        name: 'VenuesWaterEnvironment',
+        component: () => import('@/views/sector/venues/WaterEnvironment.vue'),
+        meta: {
+          title: '水环境保障'
+        }
+      },
+      {
+        path: 'venues/water-supply-drainage/:id',
+        name: 'VenuesWaterSupplyDrainage',
+        component: () => import('@/views/sector/venues/WaterSupplyDrainage.vue'),
+        meta: {
+          title: '供排水保障'
+        }
+      },
+      {
         path: 'monitoring',
         name: 'Monitoring',
         component: () => import('@/views/sector/monitoring/index.vue'),

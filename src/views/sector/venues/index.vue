@@ -1,9 +1,9 @@
 <template>
-   <!-- <div id="mapContainer" v-loading="isLoading"
+   <div id="mapContainer" v-loading="isLoading"
     :element-loading-background="`rgba(${loadingText == '地图加载中...' ? '255,255,255,0.9' : '0,0,0,0'})`"
-    :element-loading-text="loadingText" :element-loading-spinner="`${loadingText == '地图加载中...' ? '' : ' '}`"></div> -->
+    :element-loading-text="loadingText" :element-loading-spinner="`${loadingText == '地图加载中...' ? '' : ' '}`"></div>
   <!-- 搜索区 -->
-  <!-- <at-map-search :map="mapView" @click="handleSearch" /> -->
+  <at-map-search :map="mapView" @click="handleSearch" />
 
   <!-- 地图弹窗容器 -->
   <div id="venuePopupContainer" class="popup-overlay">
@@ -375,8 +375,9 @@
 
 <script lang="ts" setup>
 
-import { reactive, shallowRef, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { initGisMap, createMarkerGraphic, esriModules, createMarkerPopup, updateAllPopupPositions, mapView as gisMapView } from '@/utils/gis'
+import { reactive, shallowRef, ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { initGisMap, createMarkerGraphic, esriModules, createMarkerPopup, mapView as gisMapView } from '@/utils/gis'
 import { useVenuesScene } from './useVenuesScene'
 import { MetricsVenuesAPI } from '@/api/sector/metrics'
 import iconFlood from '@/assets/imgs/sector/floodGuarantee.png'
@@ -420,7 +421,7 @@ const setPopupRef = (el: HTMLElement | null, venueId: number) => {
     // 为弹窗注册到GIS弹窗系统
     const venue = venuesKeyVenues.value.find(v => v.id === venueId)
     if (venue && venue.longitude && venue.latitude) {
-      console.log('注册弹窗到GIS系统:', venueId, '坐标:', [venue.longitude, venue.latitude])
+
       createMarkerPopup(el, [venue.longitude, venue.latitude])
     }
   }
@@ -518,7 +519,7 @@ const logSceneData = async (scene: 'floodControl' | 'waterEnvironment' | 'waterS
       venuesKeyVenues.value = Array.isArray(keyVenueData) ? keyVenueData : (keyVenueData?.list ?? [])
       // 渲染防汛重点场所点位
       if (venuesState.sceneActive === 'floodControl') {
-        renderVenuesMarkers()
+        renderMarkersForScene('floodControl')
       }
     } else if (scene === 'waterEnvironment') {
       const [venues, monitor, warning] = await Promise.all([
@@ -570,22 +571,22 @@ const logSceneData = async (scene: 'floodControl' | 'waterEnvironment' | 'waterS
 const showVenuePopup = (attrs: any) => {
   const id = Number(attrs?.id)
   if (!id) {
-    console.log('showVenuePopup: ID无效', attrs)
+ 
     return
   }
   
-  console.log('显示弹窗，ID:', id, 'attributes:', attrs)
+
   
   // 检查弹窗元素是否存在
   const popupEl = venuePopupMap.get(id)
-  console.log('弹窗元素:', popupEl)
+ 
   
   // 设置活跃弹窗ID，Vue会自动处理显示/隐藏
   activePopupId.value = id
   
   // 延迟计算位置，确保地图渲染完成
   setTimeout(() => {
-    console.log('延迟更新弹窗位置')
+   
     
     if (popupEl) {
       const venue = venuesKeyVenues.value.find(v => v.id === id)
@@ -619,17 +620,11 @@ const showVenuePopup = (attrs: any) => {
               popupEl.style.transform = 'none'
               popupEl.style.left = `${Math.round(finalX)}px`
               popupEl.style.top = `${Math.round(finalY)}px`
-              
-              console.log('弹窗定位成功:', {
-                venue: venue.stationName,
-                screenPoint: [screenPoint.x, screenPoint.y],
-                popupSize: [popupWidth, popupHeight],
-                finalPos: [finalX, finalY]
-              })
+      
             }
           })
         } catch (error) {
-          console.error('弹窗定位失败:', error)
+      
         }
       }
     }
@@ -637,7 +632,7 @@ const showVenuePopup = (attrs: any) => {
 }
 
 const hideVenuePopup = () => {
-  console.log('隐藏所有弹窗')
+
   activePopupId.value = null
 }
 
@@ -670,10 +665,33 @@ const updateActivePopupPosition = () => {
           popupEl.style.top = `${Math.round(finalY)}px`
         }
       } catch (error) {
-        console.error('更新弹窗位置失败:', error)
+ 
       }
     }
   }
+}
+
+
+// 路由跳转：根据当前场景跳到对应子路由并携带 id 和 stationName（使用 query，避免未在 path 中声明的 params 被丢弃）
+const router = useRouter()
+const navigateToVenueDetail = (id: number | string, stationName?: string) => {
+  if (!id) return
+  let routeName = 'VenuesFloodControl'
+  if (venuesState.sceneActive === 'waterEnvironment') routeName = 'VenuesWaterEnvironment'
+  if (venuesState.sceneActive === 'waterSupplyDrainage') routeName = 'VenuesWaterSupplyDrainage'
+  let finalName = stationName
+  // 兜底：若未显式传入名称，尝试从已加载的数据中按 id 查找（注意 .value）
+  try {
+    const list: any[] = (venuesKeyVenues as any)?.value ?? []
+    if (!finalName && Array.isArray(list)) {
+      const found = list.find(v => String(v?.id) === String(id))
+      if (found) finalName = found?.stationName || found?.name
+    }
+  } catch {}
+  const params: any = { id: String(id) }
+  const query: any = {}
+  if (finalName) query.stationName = String(finalName)
+  router.push({ name: routeName, params, query })
 }
 
 
@@ -718,6 +736,10 @@ onUnmounted(() => {
       mapView.value._venuesLeaveHandler.remove()
       mapView.value._venuesLeaveHandler = null
     }
+    if (mapView.value._venuesClickHandler) {
+      mapView.value._venuesClickHandler.remove()
+      mapView.value._venuesClickHandler = null
+    }
   }
   // 清理弹窗
   venuePopupMap.clear()
@@ -726,7 +748,7 @@ onUnmounted(() => {
 // 当重点场所数据或图层就绪时，尝试渲染点位（修复首次进入图层未就绪导致不渲染的问题）
 watch(venuesKeyVenues, () => {
   if (venuesState.sceneActive === 'floodControl') {
-    renderVenuesMarkers()
+    renderMarkersForScene('floodControl')
     // 等待Vue渲染弹窗后注册到GIS系统
     setTimeout(() => {
       console.log('延迟注册弹窗到GIS系统，当前弹窗数量:', venuePopupMap.size)
@@ -773,6 +795,9 @@ const renderMarkersForScene = (scene?: 'floodControl' | 'waterEnvironment' | 'wa
       if (mapView.value._venuesLeaveHandler) {
         mapView.value._venuesLeaveHandler.remove()
       }
+      if (mapView.value._venuesClickHandler) {
+        mapView.value._venuesClickHandler.remove()
+      }
 
       // 添加鼠标移动事件监听
       mapView.value._venuesHoverHandler = mapView.value.on('pointer-move', (event) => {
@@ -795,6 +820,20 @@ const renderMarkersForScene = (scene?: 'floodControl' | 'waterEnvironment' | 'wa
       // 添加鼠标离开地图区域的事件监听
       mapView.value._venuesLeaveHandler = mapView.value.on('pointer-leave', () => {
         hideVenuePopup()
+      })
+
+      // 添加点击事件：命中当前场景点位则跳转
+      mapView.value._venuesClickHandler = mapView.value.on('click', (event) => {
+        mapView.value.hitTest(event).then((response) => {
+          const activeLayer = getActiveLayer()
+          const result = response.results.find((r) => r.graphic && r.graphic.layer === activeLayer && currentGraphics.includes(r.graphic))
+          if (result && result.graphic && result.graphic.attributes) {
+            const { id, stationName } = result.graphic.attributes
+            navigateToVenueDetail(id, stationName)
+          }
+        }).catch((error) => {
+          console.error('click hitTest失败:', error)
+        })
       })
     }
   } catch (e) {
