@@ -1599,9 +1599,13 @@ metricsState.goPlantDetail = (row: any) => {
     color: #e6f4ff;
     font-weight: 600;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 0;
+    font-size: 12px;
   }
   :deep(.el-table td.el-table__cell) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 6px 0;
+    font-size: 12px;
   }
   :deep(.el-table__body tr:hover>td),
   :deep(.el-table__body tr.el-table__row:hover>td) {

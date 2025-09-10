@@ -153,141 +153,160 @@
         <h3>{{ detailTitle }}（{{ detailStationName || '-' }}）</h3>
         <el-button size="small" type="info" plain @click="clearDetailPanel">关闭</el-button>
       </div>
-      <div class="container-content right-panel--detail">
+      <div class="container-content right-panel--detail" v-loading="isDetailLoading" 
+           element-loading-text="加载中..." 
+           element-loading-spinner="el-icon-loading"
+           element-loading-background="rgba(0,0,0,0.3)">
         
         <!-- 雨情详情 -->
-        <template v-if="activeDetail === 'rain' && rainDetail">
-          <div class="detail-meta">
-            <div class="meta-row"><span class="label">监测点</span><span class="value">{{ rainDetail.stationName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">区域</span><span class="value">{{ rainDetail.areaName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">河道</span><span class="value">{{ rainDetail.riverName || '-' }}</span></div>
-          </div>
-          <div class="metric-cards row-cards row-cards--three">
-            <div class="metric-card">
-              <div class="card-label">当日累计(mm)</div>
-              <div class="card-value">{{ rainDetail.todayCumulative ?? '-' }}</div>
+        <transition name="fade-slide" mode="out-in">
+          <template v-if="activeDetail === 'rain' && rainDetail">
+            <div class="detail-content">
+              <div class="detail-meta">
+                <div class="meta-row"><span class="label">监测点</span><span class="value">{{ rainDetail.stationName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">区域</span><span class="value">{{ rainDetail.areaName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">河道</span><span class="value">{{ rainDetail.riverName || '-' }}</span></div>
+              </div>
+              <div class="metric-cards row-cards row-cards--three">
+                <div class="metric-card">
+                  <div class="card-label">当日累计(mm)</div>
+                  <div class="card-value">{{ rainDetail.todayCumulative ?? '-' }}</div>
+                </div>
+                <div class="metric-card">
+                  <div class="card-label">小时雨量(mm)</div>
+                  <div class="card-value">{{ rainDetail.hourRain ?? '-' }}</div>
+                </div>
+                <div class="metric-card">
+                  <div class="card-label">实时雨量(mm)</div>
+                  <div class="card-value">{{ rainDetail.realtimeRain ?? '-' }}</div>
+                </div>
+              </div>
+              <div class="chart-wrapper" v-if="rainChartOptions">
+                <EChart :options="rainChartOptions" width="100%" height="100%" />
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="card-label">小时雨量(mm)</div>
-              <div class="card-value">{{ rainDetail.hourRain ?? '-' }}</div>
-            </div>
-            <div class="metric-card">
-              <div class="card-label">实时雨量(mm)</div>
-              <div class="card-value">{{ rainDetail.realtimeRain ?? '-' }}</div>
-            </div>
-          </div>
-          <div class="chart-wrapper" v-if="rainChartOptions">
-            <EChart :options="rainChartOptions" width="100%" height="100%" />
-          </div>
-        </template>
+          </template>
+        </transition>
 
         <!-- 隧道详情 -->
-        <template v-if="activeDetail === 'tunnel' && tunnelDetail">
-          <div class="detail-meta">
-            <div class="meta-row"><span class="label">监测点</span><span class="value">{{ tunnelDetail.stationName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">地址</span><span class="value">{{ tunnelDetail.address || '-' }}</span></div>
-          </div>
-          <div class="metric-cards row-cards row-cards--three">
-            <div class="metric-card">
-              <div class="card-label">警示阈值(m)</div>
-              <div class="card-value">{{ tunnelDetail.warningValue ?? '-' }}</div>
+        <transition name="fade-slide" mode="out-in">
+          <template v-if="activeDetail === 'tunnel' && tunnelDetail">
+            <div class="detail-content">
+              <div class="detail-meta">
+                <div class="meta-row"><span class="label">监测点</span><span class="value">{{ tunnelDetail.stationName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">地址</span><span class="value">{{ tunnelDetail.address || '-' }}</span></div>
+              </div>
+              <div class="metric-cards row-cards row-cards--three">
+                <div class="metric-card">
+                  <div class="card-label">警示阈值(m)</div>
+                  <div class="card-value">{{ tunnelDetail.warningValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card">
+                  <div class="card-label">警戒阈值(m)</div>
+                  <div class="card-value">{{ tunnelDetail.alertValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card" v-if="(tunnelRecordList?.length ?? 0) > 0">
+                  <div class="card-label">当前液位(m)</div>
+                  <div class="card-value">{{ tunnelRecordList[0]?.liquidLevel ?? '-' }}</div>
+                </div>
+              </div>
+              <div class="chart-wrapper" v-if="tunnelChartOptions">
+                <EChart :options="tunnelChartOptions" width="100%" height="100%" />
+              </div>
+              <div v-if="tunnelRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
+                <el-table :data="tunnelRecordList" height="100%" stripe border>
+                  <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
+                  <el-table-column prop="liquidLevel" label="液位(m)" width="120" />
+                  <el-table-column label="报警等级" width="120">
+                    <template #default="{ row }">{{ row.alarmLevel?.desc || '-' }}</template>
+                  </el-table-column>
+                </el-table>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="card-label">警戒阈值(m)</div>
-              <div class="card-value">{{ tunnelDetail.alertValue ?? '-' }}</div>
-            </div>
-            <div class="metric-card" v-if="(tunnelRecordList?.length ?? 0) > 0">
-              <div class="card-label">当前液位(m)</div>
-              <div class="card-value">{{ tunnelRecordList[0]?.liquidLevel ?? '-' }}</div>
-            </div>
-          </div>
-          <div class="chart-wrapper" v-if="tunnelChartOptions">
-            <EChart :options="tunnelChartOptions" width="100%" height="100%" />
-          </div>
-          <div v-if="tunnelRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
-            <el-table :data="tunnelRecordList" height="100%" stripe border>
-              <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
-              <el-table-column prop="liquidLevel" label="液位(m)" width="120" />
-              <el-table-column label="报警等级" width="120">
-                <template #default="{ row }">{{ row.alarmLevel?.desc || '-' }}</template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </template>
+          </template>
+        </transition>
 
         <!-- 河道详情 -->
-        <template v-if="activeDetail === 'river' && riverDetail">
-          <div class="detail-meta">
-            <div class="meta-row"><span class="label">监测点</span><span class="value">{{ riverDetail.stationName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">区域</span><span class="value">{{ riverDetail.areaName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">河道</span><span class="value">{{ riverDetail.riverName || riverDetail.belongRiverName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">地址</span><span class="value">{{ riverDetail.address || '-' }}</span></div>
-          </div>
-          <div class="metric-cards row-cards row-cards--three">
-            <div class="metric-card">
-              <div class="card-label">警戒阈值(m)</div>
-              <div class="card-value">{{ riverDetail.alertValue ?? '-' }}</div>
+        <transition name="fade-slide" mode="out-in">
+          <template v-if="activeDetail === 'river' && riverDetail">
+            <div class="detail-content">
+              <div class="detail-meta">
+                <div class="meta-row"><span class="label">监测点</span><span class="value">{{ riverDetail.stationName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">区域</span><span class="value">{{ riverDetail.areaName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">河道</span><span class="value">{{ riverDetail.riverName || riverDetail.belongRiverName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">地址</span><span class="value">{{ riverDetail.address || '-' }}</span></div>
+              </div>
+              <div class="metric-cards row-cards row-cards--three">
+                <div class="metric-card">
+                  <div class="card-label">警戒阈值(m)</div>
+                  <div class="card-value">{{ riverDetail.alertValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card">
+                  <div class="card-label">警示阈值(m)</div>
+                  <div class="card-value">{{ riverDetail.warningValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card" v-if="(riverRecordList?.length ?? 0) > 0">
+                  <div class="card-label">当前水位(m)</div>
+                  <div class="card-value">{{ riverRecordList[0]?.waterLevel ?? '-' }}</div>
+                </div>
+              </div>
+              <div class="chart-wrapper" v-if="riverChartOptions">
+                <EChart :options="riverChartOptions" width="100%" height="100%" />
+              </div>
+              <div v-if="riverRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
+                <el-table :data="riverRecordList" height="100%" stripe border>
+                  <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
+                  <el-table-column prop="waterLevel" label="水位(m)" width="120" />
+                  <el-table-column prop="traffic" label="流量" width="100" />
+                  <el-table-column prop="alertValue" label="警戒阈值(m)" width="120" />
+                  <el-table-column prop="warningValue" label="警示阈值(m)" width="120" />
+                </el-table>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="card-label">警示阈值(m)</div>
-              <div class="card-value">{{ riverDetail.warningValue ?? '-' }}</div>
-            </div>
-            <div class="metric-card" v-if="(riverRecordList?.length ?? 0) > 0">
-              <div class="card-label">当前水位(m)</div>
-              <div class="card-value">{{ riverRecordList[0]?.waterLevel ?? '-' }}</div>
-            </div>
-          </div>
-          <div class="chart-wrapper" v-if="riverChartOptions">
-            <EChart :options="riverChartOptions" width="100%" height="100%" />
-          </div>
-          <div v-if="riverRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
-            <el-table :data="riverRecordList" height="100%" stripe border>
-              <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
-              <el-table-column prop="waterLevel" label="水位(m)" width="120" />
-              <el-table-column prop="traffic" label="流量" width="100" />
-              <el-table-column prop="alertValue" label="警戒阈值(m)" width="120" />
-              <el-table-column prop="warningValue" label="警示阈值(m)" width="120" />
-            </el-table>
-          </div>
-        </template>
+          </template>
+        </transition>
 
         <!-- 内涝详情 -->
-        <template v-if="activeDetail === 'flood' && floodDetail">
-          <div class="detail-meta">
-            <div class="meta-row"><span class="label">监测点</span><span class="value">{{ floodDetail.stationName || '-' }}</span></div>
-            <div class="meta-row"><span class="label">地址</span><span class="value">{{ floodDetail.address || '-' }}</span></div>
-          </div>
-          <div class="metric-cards row-cards row-cards--three">
-            <div class="metric-card">
-              <div class="card-label">警示阈值(m)</div>
-              <div class="card-value">{{ floodDetail.warningValue ?? '-' }}</div>
+        <transition name="fade-slide" mode="out-in">
+          <template v-if="activeDetail === 'flood' && floodDetail">
+            <div class="detail-content">
+              <div class="detail-meta">
+                <div class="meta-row"><span class="label">监测点</span><span class="value">{{ floodDetail.stationName || '-' }}</span></div>
+                <div class="meta-row"><span class="label">地址</span><span class="value">{{ floodDetail.address || '-' }}</span></div>
+              </div>
+              <div class="metric-cards row-cards row-cards--three">
+                <div class="metric-card">
+                  <div class="card-label">警示阈值(m)</div>
+                  <div class="card-value">{{ floodDetail.warningValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card">
+                  <div class="card-label">警戒阈值(m)</div>
+                  <div class="card-value">{{ floodDetail.alertValue ?? '-' }}</div>
+                </div>
+                <div class="metric-card" v-if="(floodRecordList?.length ?? 0) > 0">
+                  <div class="card-label">当前液位(m)</div>
+                  <div class="card-value">{{ floodRecordList[0]?.liquidLevel ?? floodRecordList[0]?.waterLevel ?? '-' }}</div>
+                </div>
+              </div>
+              <div class="chart-wrapper" v-if="floodChartOptions">
+                <EChart :options="floodChartOptions" width="100%" height="100%" />
+              </div>
+              <div v-if="floodRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
+                <el-table :data="floodRecordList" height="100%" stripe border>
+                  <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
+                  <el-table-column label="液位(m)" width="120">
+                    <template #default="{ row }">{{ row.liquidLevel ?? row.waterLevel ?? '-' }}</template>
+                  </el-table-column>
+                  <el-table-column prop="alertValue" label="警戒阈值(m)" width="120" />
+                  <el-table-column prop="warningValue" label="警示阈值(m)" width="120" />
+                  <el-table-column label="报警等级" width="120">
+                    <template #default="{ row }">{{ row.alarmLevel?.desc || row.alarmLevel || '-' }}</template>
+                  </el-table-column>
+                </el-table>
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="card-label">警戒阈值(m)</div>
-              <div class="card-value">{{ floodDetail.alertValue ?? '-' }}</div>
-            </div>
-            <div class="metric-card" v-if="(floodRecordList?.length ?? 0) > 0">
-              <div class="card-label">当前液位(m)</div>
-              <div class="card-value">{{ floodRecordList[0]?.liquidLevel ?? floodRecordList[0]?.waterLevel ?? '-' }}</div>
-            </div>
-          </div>
-          <div class="chart-wrapper" v-if="floodChartOptions">
-            <EChart :options="floodChartOptions" width="100%" height="100%" />
-          </div>
-          <div v-if="floodRecordList?.length" class="table-wrapper" style="margin-top: 6px;">
-            <el-table :data="floodRecordList" height="100%" stripe border>
-              <el-table-column prop="collectionTime" label="采集时间" min-width="160" />
-              <el-table-column label="液位(m)" width="120">
-                <template #default="{ row }">{{ row.liquidLevel ?? row.waterLevel ?? '-' }}</template>
-              </el-table-column>
-              <el-table-column prop="alertValue" label="警戒阈值(m)" width="120" />
-              <el-table-column prop="warningValue" label="警示阈值(m)" width="120" />
-              <el-table-column label="报警等级" width="120">
-                <template #default="{ row }">{{ row.alarmLevel?.desc || row.alarmLevel || '-' }}</template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </template>
+          </template>
+        </transition>
 
       </div>
     </div>
@@ -305,7 +324,7 @@
 
 <script setup lang="ts">
 import { shallowRef, ref, onMounted, onUnmounted, computed } from 'vue'
-import { initGisMap, esriModules, createMarkerGraphic, createMarkerPopup, updateAllPopupPositions, popups } from '@/utils/gis'
+import { initGisMap, esriModules, createMarkerGraphic, createMarkerPopup, popups } from '@/utils/gis'
 import { useRouter, useRoute } from 'vue-router'
 import EChart from '@/components/Echart/src/Echart.vue'
 import { FloodControlAPI } from '@/api/sector/metrics'
@@ -343,6 +362,7 @@ const floodDetail = ref<any | null>(null)
 const floodRecordList = ref<any[]>([])
 const floodChartOptions = ref<any | null>(null)
 const activeDetail = ref<'rain' | 'river' | 'tunnel' | 'flood' | null>(null)
+const isDetailLoading = ref<boolean>(false)
 const detailTitle = computed(() => {
   switch (activeDetail.value) {
     case 'flood': return '内涝详情'
@@ -410,11 +430,6 @@ const renderPoints = (layerRef: any, list: any[], iconUrl: string, category: 'ra
 
 // 简易名称弹窗管理
 const popupDomList: HTMLElement[] = []
-const cleanupPopups = () => {
-  try { popupDomList.forEach((el) => el?.remove?.()) } catch {}
-  popupDomList.length = 0
-  try { (popups as any).length = 0 } catch {}
-}
 const renderNamePopups = (list: any[]) => {
   if (!Array.isArray(list) || !list.length) return
   const container = mapView.value?.container
@@ -464,6 +479,7 @@ const centerOnPoint = (row: any) => {
 // 清理详情面板数据
 const clearDetailPanel = () => {
   activeDetail.value = null
+  isDetailLoading.value = false
   rainDetail.value = null
   rainChartOptions.value = null
   tunnelDetail.value = null
@@ -481,6 +497,7 @@ const clearDetailPanel = () => {
 const setActiveDetail = (type: 'rain' | 'tunnel' | 'river' | 'flood') => {
   clearDetailPanel()
   activeDetail.value = type
+  isDetailLoading.value = true
 }
 
 const icons = {
@@ -602,7 +619,11 @@ onMounted(async () => {
                   { name: '警戒阈值', type: 'line', data: alert, smooth: true, showSymbol: false }
                 ]
               }
-            }).catch((e) => console.warn('[Detail][内涝]失败', e))
+              isDetailLoading.value = false
+            }).catch((e) => {
+              console.warn('[Detail][内涝]失败', e)
+              isDetailLoading.value = false
+            })
             break
           case 'rain':
             setActiveDetail('rain')
@@ -620,7 +641,11 @@ onMounted(async () => {
                 yAxis: { type: 'value', name: 'mm', nameTextStyle: { color: '#cfe8ff' }, axisLabel: { color: '#cfe8ff' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.25)' } } },
                 series: [{ type: 'line', data: y, smooth: true, showSymbol: false, lineStyle: { width: 2, color: '#4A90E2' }, areaStyle: { color: 'rgba(74,144,226,0.18)' } }]
               }
-            }).catch((e) => console.warn('[Detail][雨情]失败', e))
+              isDetailLoading.value = false
+            }).catch((e) => {
+              console.warn('[Detail][雨情]失败', e)
+              isDetailLoading.value = false
+            })
             break
           case 'river':
             setActiveDetail('river')
@@ -646,7 +671,11 @@ onMounted(async () => {
                   { name: '警戒阈值', type: 'line', data: alert, smooth: true, showSymbol: false }
                 ]
               }
-            }).catch((e) => console.warn('[Detail][河道]失败', e))
+              isDetailLoading.value = false
+            }).catch((e) => {
+              console.warn('[Detail][河道]失败', e)
+              isDetailLoading.value = false
+            })
             break
           case 'tunnel':
             setActiveDetail('tunnel')
@@ -672,7 +701,11 @@ onMounted(async () => {
                   { name: '警戒阈值', type: 'line', data: alert, smooth: true, showSymbol: false }
                 ]
               }
-            }).catch((e) => console.warn('[Detail][隧道]失败', e))
+              isDetailLoading.value = false
+            }).catch((e) => {
+              console.warn('[Detail][隧道]失败', e)
+              isDetailLoading.value = false
+            })
             break
         }
       }).catch(() => {})
@@ -763,7 +796,8 @@ onUnmounted(() => {
 .container-header { 
   display: flex; 
   align-items: center; 
-  justify-content: space-between; 
+  justify-content: flex-start; 
+  gap: 8px;
 }
 
 /* 左侧面板表格 - 深色主题（与 metrics 保持一致） */
@@ -829,6 +863,125 @@ onUnmounted(() => {
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* 完全隐藏滚动条 */
+.floating-panel {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.floating-panel::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.floating-panel::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.floating-panel::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+.table-wrapper {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+.right-panel--detail {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.right-panel--detail::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.right-panel--detail::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.right-panel--detail::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+/* 全局隐藏所有滚动条 */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+*::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+/* 过渡动画效果 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease-in-out;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+} 
+
+.fade-slide-enter-to,
+.fade-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* 详情内容容器 */
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
 

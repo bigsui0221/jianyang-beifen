@@ -226,3 +226,74 @@ export const FloodControlAPI = {
     })
   }
 }
+
+// 水环境保障
+export const WaterEnvironmentAPI = {
+  /** 获取排污口监测 */
+  getPollutionOutletMonitor: async (id: number) => {
+    return await request.get({
+      url: `/sector/water-guarantee/getOutfallMonitor`,
+      params: { id }
+    })
+  },
+  /** 获取排污口监测详情 */
+  getPollutionOutletMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/water-guarantee/getOutfallMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取水质监测 */
+  getWaterQualityMonitor: async (id: number) => {
+    return await request.get({
+      url: `/sector/water-guarantee/getWaterMonitor`,
+      params: { id }
+    })
+  },
+  /** 获取水质监测详情 */
+  getWaterQualityMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/water-guarantee/getWaterMonitorDetail`,
+      params: { id }
+    })
+  }
+}
+
+// 供排水保障
+export const WaterSupplyDrainageAPI = {
+  /** 获取供水压力监测 */
+  getWaterPressureMonitor: async (id: number) => {
+    return await request.get({
+      url: `/sector/supply-guarantee/getSupplyPressureMonitor`,
+      params: { id }
+    })
+  },
+  /** 获取供水压力监测详情 */
+  getWaterPressureMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/supply-guarantee/getPressureMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取供水水质监测 */
+  getWaterQualityMonitor: async (id: number) => {
+    return await request.get({
+      url: `/sector/supply-guarantee/getSupplyQualityMonitor`,
+      params: { id }
+    })
+  },
+  /** 获取供水水质监测详情 */
+  getWaterQualityMonitorDetail: async (id: number) => {
+    return await request.get({
+      url: `/sector/supply-guarantee/getQualityMonitorDetail`,
+      params: { id }
+    })
+  },
+  /** 获取供排水量统计 */
+  getWaterSupplyDrainageVolumeStat: async (id: number) => {
+    return await request.get({
+      url: `/sector/supply-guarantee/getSupplyDrainageStatistics`,
+      params: { id }
+    })
+  }
+}
