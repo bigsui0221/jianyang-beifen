@@ -25,7 +25,7 @@ import SimpleMenu from './components/SimpleMenu.vue'
 }
 
 .top-menu {
-  height: 60px;
+  height: 0.6rem;  /* 60px / 100 = 0.6rem，菜单高度响应式 */
   background-color: #304156;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 1000;

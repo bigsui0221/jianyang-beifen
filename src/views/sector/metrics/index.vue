@@ -1,8 +1,7 @@
 <template>
-  <!-- eslint-disable -->
   <!-- 地图容器 -->
   <div id="mapContainer">
-  </div> 
+  </div>
   
   <!-- 左侧悬浮区域 -->
   <div class="floating-panel left-panel" v-if="metricsState.sceneActive === 'publicSecurity'">
@@ -10,25 +9,12 @@
     <div class="panel-container flex-1">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-supervision"></i>
+          <img :src="titleIcon" alt="实时天气" class="title-icon" />
         </div>
         <h3>实时天气</h3>
       </div>
       <div class="container-content">
-        <div class="metric-cards">
-          <div class="metric-card">
-            <div class="card-label">督导检查总数</div>
-            <div class="card-value">300件</div>
-          </div>
-          <div class="metric-card">
-            <div class="card-label">无问题数量</div>
-            <div class="card-value">269件</div>
-          </div>
-          <div class="metric-card">
-            <div class="card-label">有问题数量</div>
-            <div class="card-value">31件</div>
-          </div>
-        </div>
+    
       </div>
     </div>
     
@@ -36,7 +22,7 @@
     <div class="panel-container flex-2">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-rainfall"></i>
+          <img :src="titleIcon" alt="雨量分布" class="title-icon" />
         </div>
         <h3>雨量分布</h3>
       </div>
@@ -83,7 +69,7 @@
     <div class="panel-container flex-3 right3-panel">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-warning"></i>
+          <img :src="titleIcon" alt="预警信息" class="title-icon" />
         </div>
         <h3>预警信息</h3>
       </div>
@@ -115,7 +101,9 @@
     <!-- 污水处理检测 -->
     <div class="panel-container flex-1">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="污水处理检测" class="title-icon" />
+        </div>
         <h3>污水处理检测</h3>
       </div>
       <div class="container-content">
@@ -139,7 +127,9 @@
     <!-- 污水处理量统计 -->
     <div class="panel-container flex-2">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-rainfall"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="污水处理量统计" class="title-icon" />
+        </div>
         <h3>污水处理量统计</h3>
       </div>
       <div class="container-content">
@@ -160,12 +150,19 @@
     <!-- 污水厂监测数据 -->
     <div class="panel-container flex-3">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-warning"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="污水厂监测数据" class="title-icon" />
+        </div>
         <h3>污水厂监测数据</h3>
       </div>
       <div class="container-content">
         <div class="table-wrapper">
-          <el-table :data="metricsState.pmPlants" height="100%" stripe border>
+          <!-- 加载状态时显示骨架屏 -->
+          <div v-if="loadingState.managementLoading" class="table-skeleton">
+            <div class="skeleton-table-row" v-for="i in 6" :key="i"></div>
+          </div>
+          <!-- 数据加载完成后显示真实表格 -->
+          <el-table v-else :data="metricsState.pmPlants" height="100%" stripe border>
             <el-table-column prop="name" label="厂站" width="140" />
             <el-table-column prop="flow" label="当日处理量(m³/日)" width="160" />
             <el-table-column prop="tp" label="总磷(mg/L)" width="120" />
@@ -187,18 +184,24 @@
   <div class="floating-panel left-panel" v-if="metricsState.sceneActive === 'publicService'">
     <div class="panel-container fill">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="供水量概况" class="title-icon" />
+        </div>
         <h3>供水量概况</h3>
       </div>
       <div class="container-content">
-        <el-tabs v-model="metricsState.service.active" class="tabs-compact">
-          <el-tab-pane
-            v-for="(s, sIdx) in metricsState.service.list"
-            :key="sIdx"
-            :label="s.stationName || `供水厂${sIdx+1}`"
-            :name="String(sIdx)"
-          />
-        </el-tabs>
+        <!-- 自定义 Tabs -->
+        <div class="custom-tabs">
+          <div class="custom-tabs-header">
+            <button
+              v-for="(s, sIdx) in metricsState.service.list"
+              :key="sIdx"
+              class="custom-tab-btn"
+              :class="{ active: metricsState.service.active === String(sIdx) }"
+              @click="metricsState.service.active = String(sIdx)"
+            >{{ s.stationName || `供水厂${sIdx+1}` }}</button>
+          </div>
+        </div>
 
         <div class="metric-cards row-cards two-rows">
           <div class="metric-card">
@@ -225,14 +228,20 @@
 
         <!-- 月供水量统计柱状图 -->
         <div class="chart-title">月供水量统计</div>
-        <div class="chart-wrapper" style="margin-top: 8px; height: 260px;">
-          <EChart :options="metricsState.serviceMonthChartOptions" width="100%" height="100%" />
+        <div class="chart-wrapper" style="margin-top: 0.08rem; height: 2.6rem;"> <!-- 8px → 0.08rem, 260px → 2.6rem，图表容器响应式 -->
+          <!-- 加载状态时显示骨架屏 -->
+          <div v-if="loadingState.serviceLoading" class="skeleton-chart"></div>
+          <!-- 数据加载完成后显示真实图表 -->
+          <EChart v-else :options="metricsState.serviceMonthChartOptions" width="100%" height="100%" />
         </div>
 
         <!-- 近七日供水量统计（实供 vs 计划） -->
-        <div class="chart-title" style="margin-top: 8px;">近七日供水量统计</div>
-        <div class="chart-wrapper" style="margin-top: 12px; height: 220px;">
-          <EChart :options="metricsState.serviceWeekChartOptions" width="100%" height="100%" />
+        <div class="chart-title" style="margin-top: 0.08rem;">近七日供水量统计</div> <!-- 8px → 0.08rem，标题间距响应式 -->
+        <div class="chart-wrapper" style="margin-top: 0.12rem; height: 2.2rem;"> <!-- 12px → 0.12rem, 220px → 2.2rem，图表容器响应式 -->
+          <!-- 加载状态时显示骨架屏 -->
+          <div v-if="loadingState.serviceLoading" class="skeleton-chart"></div>
+          <!-- 数据加载完成后显示真实图表 -->
+          <EChart v-else :options="metricsState.serviceWeekChartOptions" width="100%" height="100%" />
         </div>
       </div>
     </div>
@@ -243,56 +252,80 @@
     <div class="panel-container">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-supervision"></i>
+          <img :src="titleIcon" alt="实时监测数据" class="title-icon" />
         </div>
         <h3>实时监测数据</h3>
       </div>
       <div class="container-content">
-        <!-- Tabs -->
-        <el-tabs v-model="metricsState.panel.activeTab" class="tabs-compact">
-          <el-tab-pane label="河道水情" name="river" />
-          <el-tab-pane label="水库水情" name="reservoir" />
-          <el-tab-pane label="下穿隧道" name="tunnel" />
-          <el-tab-pane label="内涝点" name="ponding" />
-        </el-tabs>
+        <!-- 自定义 Tabs -->
+        <div class="custom-tabs">
+          <div class="custom-tabs-header">
+            <button
+              class="custom-tab-btn"
+              :class="{ active: metricsState.panel.activeTab === 'river' }"
+              @click="metricsState.panel.activeTab = 'river'"
+            >河道水情</button>
+            <button
+              class="custom-tab-btn"
+              :class="{ active: metricsState.panel.activeTab === 'reservoir' }"
+              @click="metricsState.panel.activeTab = 'reservoir'"
+            >水库水情</button>
+            <button
+              class="custom-tab-btn"
+              :class="{ active: metricsState.panel.activeTab === 'tunnel' }"
+              @click="metricsState.panel.activeTab = 'tunnel'"
+            >下穿隧道</button>
+            <button
+              class="custom-tab-btn"
+              :class="{ active: metricsState.panel.activeTab === 'ponding' }"
+              @click="metricsState.panel.activeTab = 'ponding'"
+            >内涝点</button>
+          </div>
+        </div>
 
         <!-- 统计卡片（横向） -->
         <div class="stats-row" v-if="metricsState.panel.activeTab !== 'reservoir'">
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.total }}</div>
-            <div class="card-value">{{ metricsState.panelStats.total }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.total }}</div>
           </div>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.alarm }}</div>
-            <div class="card-value">{{ metricsState.panelStats.alarm }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.alarm }}</div>
           </div>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.serious }}</div>
-            <div class="card-value">{{ metricsState.panelStats.serious }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.serious }}</div>
           </div>
         </div>
         <div class="stats-row" v-else>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.total }}</div>
-            <div class="card-value">{{ metricsState.panelStats.total }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.total }}</div>
           </div>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.alarm }}</div>
-            <div class="card-value">{{ metricsState.panelStats.alarm }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.alarm }}</div>
           </div>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.serious }}</div>
-            <div class="card-value">{{ metricsState.panelStats.serious }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.serious }}</div>
           </div>
           <div class="metric-card">
             <div class="card-label">{{ metricsState.panelLabels.verification }}</div>
-            <div class="card-value">{{ metricsState.panelStats.verification }}</div>
+            <div class="card-value" :class="{ 'skeleton-loader': loadingState.dataLoading }">{{ loadingState.dataLoading ? '' : metricsState.panelStats.verification }}</div>
           </div>
         </div>
 
         <!-- 表格（自适应撑满剩余高度） -->
         <div class="table-wrapper">
+          <!-- 加载状态时显示骨架屏 -->
+          <div v-if="loadingState.dataLoading" class="table-skeleton">
+            <div class="skeleton-table-row" v-for="i in 8" :key="i"></div>
+          </div>
+          <!-- 数据加载完成后显示真实表格 -->
           <el-table
+            v-else
             :data="metricsState.panelTable"
             height="100%"
             stripe
@@ -315,7 +348,9 @@
     <!-- 右1：排水管网监测点统计 -->
     <div class="panel-container flex-1">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="排水管网监测点统计" class="title-icon" />
+        </div>
         <h3>排水管网监测点统计</h3>
       </div>
       <div class="container-content">
@@ -335,7 +370,9 @@
     <!-- 右2：排水管网检测数据 -->
     <div class="panel-container flex-3">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="排水管网检测数据" class="title-icon" />
+        </div>
         <h3>排水管网检测数据</h3>
       </div>
       <div class="container-content">
@@ -358,7 +395,9 @@
     <!-- 右3：河道巡河统计（含图表预留） -->
     <div class="panel-container flex-3">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-rainfall"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="河道巡河统计" class="title-icon" />
+        </div>
         <h3>河道巡河统计</h3>
       </div>
       <div class="container-content">
@@ -388,7 +427,9 @@
     <!-- 右1：仅展示三个水厂 PH/浊度/余氯 -->
     <div class="panel-container">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="出水水质检测" class="title-icon" />
+        </div>
         <h3>出水水质检测</h3>
       </div>
       <div class="container-content">
@@ -420,7 +461,9 @@
     <!-- 右2：完整表格放这里 -->
     <div class="panel-container">
       <div class="container-header">
-        <div class="header-icon"><i class="icon-supervision"></i></div>
+        <div class="header-icon">
+          <img :src="titleIcon" alt="出水水质检测数据" class="title-icon" />
+        </div>
         <h3>出水水质检测数据</h3>
       </div>
       <div class="container-content">
@@ -439,7 +482,12 @@
           </div>
         </div>
         <div class="table-wrapper">
-          <el-table :data="metricsState.serviceNetworkQuality" height="100%" stripe border>
+          <!-- 加载状态时显示骨架屏 -->
+          <div v-if="loadingState.serviceLoading" class="table-skeleton">
+            <div class="skeleton-table-row" v-for="i in 6" :key="i"></div>
+          </div>
+          <!-- 数据加载完成后显示真实表格 -->
+          <el-table v-else :data="metricsState.serviceNetworkQuality" height="100%" stripe border>
             <el-table-column prop="stationName" label="监测点" width="160" />
             <el-table-column prop="pressure" label="压力(MPa)" width="120" />
             <el-table-column prop="residualChlorine" label="余氯(mg/L)" width="130" />
@@ -457,16 +505,50 @@
   
   <!-- 底部三项操作 -->
   <div class="bottom-actions">
-    <div class="action-item secure" @click="metricsState.setScene('publicSecurity')">
-      <div class="action-icon"><img :key="'secure-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicSecurity' ? iconSecureActive : iconSecure" alt="公共安全" /></div>
+    <!-- 隐藏的图片预渲染容器，确保所有图片都被浏览器缓存 -->
+    <div class="preload-images">
+      <img :src="iconSecure" alt="公共安全" style="display: none;" />
+      <img :src="iconManage" alt="公共管理" style="display: none;" />
+      <img :src="iconService" alt="公共服务" style="display: none;" />
+      <img :src="iconSecureActive" alt="公共安全激活" style="display: none;" />
+      <img :src="iconManageActive" alt="公共管理激活" style="display: none;" />
+      <img :src="iconServiceActive" alt="公共服务激活" style="display: none;" />
+    </div>
+    
+    <div class="action-item secure" :class="{ active: metricsState.sceneActive === 'publicSecurity' }" @click="metricsState.setScene('publicSecurity')">
+      <div class="action-icon">
+        <img 
+          :key="'secure-' + metricsState.sceneActive" 
+          :src="metricsState.sceneActive === 'publicSecurity' ? iconSecureActive : iconSecure" 
+          alt="公共安全" 
+          @load="onImageLoad('secure', $event)"
+          @error="onImageError('secure', $event)"
+        />
+      </div>
       <div class="action-label">公共安全</div>
     </div>
-    <div class="action-item manage" @click="metricsState.setScene('publicManagement')">
-      <div class="action-icon"><img :key="'manage-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicManagement' ? iconManageActive : iconManage" alt="公共管理" /></div>
+    <div class="action-item manage" :class="{ active: metricsState.sceneActive === 'publicManagement' }" @click="metricsState.setScene('publicManagement')">
+      <div class="action-icon">
+        <img 
+          :key="'manage-' + metricsState.sceneActive" 
+          :src="metricsState.sceneActive === 'publicManagement' ? iconManageActive : iconManage" 
+          alt="公共管理" 
+          @load="onImageLoad('manage', $event)"
+          @error="onImageError('manage', $event)"
+        />
+      </div>
       <div class="action-label">公共管理</div>
     </div>
-    <div class="action-item service" @click="metricsState.setScene('publicService')">
-      <div class="action-icon"><img :key="'service-' + metricsState.sceneActive" :src="metricsState.sceneActive === 'publicService' ? iconServiceActive : iconService" alt="公共服务" /></div>
+    <div class="action-item service" :class="{ active: metricsState.sceneActive === 'publicService' }" @click="metricsState.setScene('publicService')">
+      <div class="action-icon">
+        <img 
+          :key="'service-' + metricsState.sceneActive" 
+          :src="metricsState.sceneActive === 'publicService' ? iconServiceActive : iconService" 
+          alt="公共服务" 
+          @load="onImageLoad('service', $event)"
+          @error="onImageError('service', $event)"
+        />
+      </div>
       <div class="action-label">公共服务</div>
     </div>
   </div>
@@ -474,7 +556,8 @@
 
 <script lang="ts" setup>
 // @ts-nocheck
-import { shallowRef, reactive, onMounted, ref, computed, watch } from 'vue'
+import { shallowRef, reactive, onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { ElLoading } from 'element-plus'
 import { initGisMap, esriModules, createMarkerGraphic, createMarkerPopup, updateAllPopupPositions, popups } from '@/utils/gis'
 import { MetricsAPI, MetricsManagementAPI, MetricsServiceAPI } from '@/api/sector/metrics'
 import riverIcon from '@/assets/imgs/sector/河道水情.png'
@@ -490,9 +573,107 @@ import iconService from '@/assets/imgs/sector/公共服务.png'
 import iconSecureActive from '@/assets/imgs/sector/publicsafe-active.png'
 import iconManageActive from '@/assets/imgs/sector/publimagc-active.png'
 import iconServiceActive from '@/assets/imgs/sector/publickserve-active.png'
+import titleIcon from '@/assets/imgs/sector/title-icon.png'
 import { useMetricsScene } from './useMetricsScene'
 import EChart from '@/components/Echart/src/Echart.vue'
 import { useRouter } from 'vue-router'
+
+// 加载状态管理 - 优先声明
+const loadingState = reactive({
+  mapLoading: false,
+  dataLoading: false,
+  managementLoading: false,
+  serviceLoading: false,
+  mapRendered: false,        // 地图是否渲染完成
+  markersRendered: false,    // 标记点是否渲染完成
+  allDataReady: false,
+  iconsPreloaded: false      // 图标是否预加载完成
+})
+
+// Element Plus 全局加载实例
+let globalLoading: any = null
+
+// REM 响应式设置 - 基于1920px设计稿
+const setRem = () => {
+  const designWidth = 1920 // 设计稿基准宽度
+  const currentWidth = window.innerWidth
+  // 计算缩放比例，以100px为基准字体大小
+  const fontSize = Math.min((currentWidth / designWidth) * 100, 200) // 限制最大200px
+  document.documentElement.style.fontSize = fontSize + 'px'
+  console.log(`屏幕宽度: ${currentWidth}px, 根字体大小: ${fontSize}px`)
+}
+
+// 图标预加载功能 - 优化版
+const imageCache = new Map() // 图片缓存
+const preloadImages = () => {
+  const imageUrls = [
+    iconSecure,
+    iconManage, 
+    iconService,
+    iconSecureActive,
+    iconManageActive,
+    iconServiceActive
+  ]
+  
+  console.log('开始预加载底部按钮图标...', imageUrls.length + '个')
+  
+  const promises = imageUrls.map(url => {
+    // 如果已经缓存，直接返回成功
+    if (imageCache.has(url)) {
+      console.log('图片已缓存，跳过预加载:', url)
+      return Promise.resolve(url)
+    }
+    
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      
+      // 设置超时机制，避免单个图片加载过久
+      const timeout = setTimeout(() => {
+        console.warn('图片预加载超时:', url)
+        reject(new Error(`Timeout loading ${url}`))
+      }, 5000) // 5秒超时
+      
+      img.onload = () => {
+        clearTimeout(timeout)
+        imageCache.set(url, img) // 缓存图片
+        console.log('图片预加载完成:', url.split('/').pop())
+        resolve(url)
+      }
+      
+      img.onerror = () => {
+        clearTimeout(timeout)
+        console.error('图片预加载失败:', url)
+        reject(new Error(`Failed to load ${url}`))
+      }
+      
+      img.src = url
+    })
+  })
+  
+  return Promise.allSettled(promises)
+    .then((results) => {
+      const successful = results.filter(result => result.status === 'fulfilled').length
+      const failed = results.filter(result => result.status === 'rejected').length
+      
+      console.log(`图标预加载完成: 成功${successful}个, 失败${failed}个`)
+      
+      // 只要有超过一半的图片加载成功就继续
+      if (successful >= imageUrls.length / 2) {
+        loadingState.iconsPreloaded = true
+        console.log('底部按钮图标预加载就绪')
+      } else {
+        console.warn('图标预加载成功率过低，但继续执行')
+        loadingState.iconsPreloaded = true
+      }
+      
+      return successful
+    })
+    .catch((error) => {
+      console.error('图标预加载出错:', error)
+      loadingState.iconsPreloaded = true // 确保不会阻塞页面加载
+      return 0
+    })
+}
 
 const gisMap = shallowRef<any>(null);
 const mapView = shallowRef<any>(null);
@@ -737,22 +918,51 @@ metricsState.serviceMonthChartOptions = serviceMonthChartOptions
 metricsState.serviceWeekChartOptions = serviceWeekChartOptions
 
 const initMap = async () => {
-  console.log('初始化地图')
-  const { map, view } = await initGisMap(document.getElementById('mapContainer'))
-  console.log(map, view)
-  mapView.value = view
-  gisMap.value = map
-  // 创建图层
-  if (esriModules && !metricsLayer.value) {
-    metricsLayer.value = new esriModules.GraphicsLayer();
-    gisMap.value.add(metricsLayer.value);
+  try {
+    loadingState.mapLoading = true
+    updateGlobalLoading() // 立即显示遮罩
+    console.log('初始化地图')
+    const { map, view } = await initGisMap(document.getElementById('mapContainer'))
+    console.log('地图初始化完成', map, view)
+    mapView.value = view
+    gisMap.value = map
+    
+    // 创建图层
+    if (esriModules && !metricsLayer.value) {
+      metricsLayer.value = new esriModules.GraphicsLayer();
+      gisMap.value.add(metricsLayer.value);
+    }
+    
+    // 监听地图渲染完成
+    view.when(() => {
+      console.log('地图视图渲染完成')
+      loadingState.mapRendered = true
+      loadingState.mapLoading = false
+      updateGlobalLoading()
+      checkAllRenderComplete()
+      
+      // 地图渲染完成后立即尝试渲染
+      setTimeout(() => {
+        console.log('地图渲染完成，立即尝试渲染点位')
+        renderMetricMarkers()
+      }, 100)
+    })
+    
+    // 检查是否可以渲染标记
+    checkAndRenderMarkers()
+  } catch (error) {
+    console.error('地图初始化失败:', error)
+    loadingState.mapLoading = false
+    updateGlobalLoading()
   }
-  // 若数据已就绪，首次进入也渲染一次
-  try { renderMetricMarkers() } catch {}
 };
 
 const fetchAllMetrics = async () => {
   try {
+    loadingState.dataLoading = true
+    updateGlobalLoading() // 在开始加载前就显示遮罩
+    console.log('开始加载公共安全数据...')
+    
     const [
       carResource,
       rainfallDistribution,
@@ -769,6 +979,8 @@ const fetchAllMetrics = async () => {
       MetricsAPI.getFlowDistribution()
     ])
 
+    console.log('公共安全数据加载完成')
+    
     // 将接口数据写入响应式状态
     metricsState.carResource = (carResource as any) ?? []
     metricsState.rainfallDistribution = (rainfallDistribution as any) ?? []
@@ -776,16 +988,30 @@ const fetchAllMetrics = async () => {
     metricsState.riverCondition = (riverCondition as any) ?? []
     metricsState.watergateCondition = (watergateCondition as any) ?? []
     metricsState.flowDistribution = (flowDistribution as any) ?? []
-    // 数据就绪后尝试渲染（首次进入）
-    try { renderMetricMarkers() } catch {}
+    
+    loadingState.dataLoading = false
+    updateGlobalLoading()
+    // 检查是否可以渲染标记（如果地图已准备好）
+    if (loadingState.mapRendered) {
+      checkAndRenderMarkers()
+    }
+    // 数据加载完成后直接渲染
+    if (loadingState.mapRendered) {
+      console.log('数据加载完成，直接渲染')
+      renderMetricMarkers()
+    }
   } catch (error) {
     console.error('fetchAllMetrics error', error)
+    loadingState.dataLoading = false
+    updateGlobalLoading()
   }
 }
 
 // 打印“公共管理”全部接口返回
 const fetchAllManagementAndLog = async () => {
   try {
+    loadingState.managementLoading = true
+    updateGlobalLoading() // 在开始加载前就显示遮罩
     const [
       waterPipeDetectionData,
       drainageDetectPointStat,
@@ -868,14 +1094,32 @@ const fetchAllManagementAndLog = async () => {
       // eslint-disable-next-line
       metricsState.pmRiverChartOptions = pmRiverChartOptions
     } catch {}
+    
+    loadingState.managementLoading = false
+    updateGlobalLoading()
+    if (loadingState.mapRendered) {
+      checkAndRenderMarkers()
+    }
+    // 强制触发一次渲染，确保点位显示
+    setTimeout(() => {
+      if (loadingState.mapRendered) {
+        console.log('公共管理数据加载完成，强制触发渲染')
+    
+        renderMetricMarkers()
+      }
+    }, 100)
   } catch (e) {
     console.error('fetchAllManagementAndLog error', e)
+    loadingState.managementLoading = false
+    updateGlobalLoading()
   }
 }
 
 // 打印“公共服务”全部接口返回
 const fetchAllServiceAndLog = async () => {
   try {
+    loadingState.serviceLoading = true
+    updateGlobalLoading() // 在开始加载前就显示遮罩
     const [
       waterQualityData,
       networkWaterQualityData,
@@ -886,6 +1130,7 @@ const fetchAllServiceAndLog = async () => {
       MetricsServiceAPI.getWaterSupplyPointStat()
     ])
 
+    console.log('公共服务数据加载完成')
     console.log('[Service] getWaterQualityData', waterQualityData)
     console.log('[Service] getNetworkWaterQualityData', networkWaterQualityData)
     console.log('[Service] getWaterSupplyPointStat', waterSupplyPointStat)
@@ -955,21 +1200,249 @@ const fetchAllServiceAndLog = async () => {
         }
       }
     } catch {}
+    
+    loadingState.serviceLoading = false
+    updateGlobalLoading()
+    if (loadingState.mapRendered) {
+      checkAndRenderMarkers()
+    }
+    // 强制触发一次渲染，确保点位显示
+    setTimeout(() => {
+      if (loadingState.mapRendered) {
+        console.log('公共服务数据加载完成，强制触发渲染')
+
+        renderMetricMarkers()
+      }
+    }, 100)
   } catch (e) {
     console.error('fetchAllServiceAndLog error', e)
+    loadingState.serviceLoading = false
+    updateGlobalLoading()
   }
 }
 
 // metrics 页面内的场景切换（默认公共安全）
 const sceneCtx = useMetricsScene()
 metricsState.sceneActive = sceneCtx.active
-metricsState.setScene = sceneCtx.setScene
+
+// 优化的场景切换函数
+metricsState.setScene = async (newScene: string) => {
+  const oldScene = metricsState.sceneActive
+  if (oldScene === newScene) return
+  
+  console.log(`场景切换: ${oldScene} -> ${newScene}`)
+  
+  // 确保图标预加载完成，避免切换时图片丢失
+  if (!loadingState.iconsPreloaded) {
+    console.log('等待图标预加载完成...')
+    await preloadImages()
+  }
+  
+  // 立即更新场景
+  sceneCtx.setScene(newScene)
+  metricsState.sceneActive = newScene
+  
+  // 重置渲染状态
+  loadingState.markersRendered = false
+  loadingState.allDataReady = false
+  
+  // 清理当前渲染内容
+  if (metricsLayer.value) {
+    metricsLayer.value.removeAll()
+  }
+  cleanupPopups()
+  
+  // 根据新场景加载数据（如果尚未加载）
+  if (newScene === 'publicSecurity' && loadingState.dataLoading === undefined) {
+    loadingState.dataLoading = true
+    updateGlobalLoading() // 立即显示遮罩
+    await fetchAllMetrics()
+  } else if (newScene === 'publicManagement' && loadingState.managementLoading === undefined) {
+    loadingState.managementLoading = true
+    updateGlobalLoading() // 立即显示遮罩
+    await fetchAllManagementAndLog()
+  } else if (newScene === 'publicService' && loadingState.serviceLoading === undefined) {
+    loadingState.serviceLoading = true
+    updateGlobalLoading() // 立即显示遮罩
+    await fetchAllServiceAndLog()
+  }
+  
+  // 重新渲染当前场景的数据
+  if (loadingState.mapRendered) {
+    checkAndRenderMarkers()
+  }
+  
+  // 确保在场景切换后立即尝试渲染
+  setTimeout(() => {
+    if (loadingState.mapRendered) {
+      console.log('场景切换完成，强制触发渲染')
+      renderMetricMarkers()
+    }
+  }, 200)
+}
+
+// 智能渲染检查：只有当地图和当前场景的数据都准备好时才渲染
+const checkAndRenderMarkers = () => {
+  if (loadingState.mapLoading || !loadingState.mapRendered) {
+    console.log('地图还在加载或渲染中，等待渲染')
+    return
+  }
+  
+  const currentScene = metricsState.sceneActive
+  let canRender = false
+  
+  if (currentScene === 'publicSecurity' && !loadingState.dataLoading) {
+    canRender = true
+    console.log('公共安全数据就绪，可以渲染')
+  } else if (currentScene === 'publicManagement' && !loadingState.managementLoading) {
+    canRender = true
+    console.log('公共管理数据就绪，可以渲染')
+  } else if (currentScene === 'publicService' && !loadingState.serviceLoading) {
+    canRender = true
+    console.log('公共服务数据就绪，可以渲染')
+  }
+  
+  if (canRender) {
+    try {
+      console.log('开始渲染地图标记点...')
+      // 重置标记渲染状态
+      loadingState.markersRendered = false
+      renderMetricMarkers()
+    } catch (error) {
+      console.warn('渲染标记点失败:', error)
+    }
+  } else {
+    // 即使数据还没完全加载，也尝试渲染已有的数据
+    console.log('数据还在加载中，尝试渲染已有数据...')
+    try {
+      renderMetricMarkers()
+    } catch (error) {
+      console.warn('渲染已有数据失败:', error)
+    }
+  }
+}
+
+// Element Plus 全局加载状态管理
+const updateGlobalLoading = () => {
+  const isLoading = loadingState.mapLoading || loadingState.dataLoading || loadingState.managementLoading || loadingState.serviceLoading
+  
+  if (isLoading && !globalLoading) {
+    // 显示全局加载遮罩
+    globalLoading = ElLoading.service({
+      lock: true,
+      text: '正在加载数据...',
+      background: 'linear-gradient(135deg, #0a1e3c 0%, #1a2b4a 100%)',
+      customClass: 'metrics-global-loading'
+    })
+    console.log('显示Element Plus全局加载遮罩')
+  } else if (!isLoading && globalLoading) {
+    // 隐藏全局加载遮罩
+    globalLoading.close()
+    globalLoading = null
+    console.log('隐藏Element Plus全局加载遮罩')
+  }
+}
+
+// 检查所有渲染是否完成
+const checkAllRenderComplete = () => {
+  // 检查是否所有数据都加载完成且地图和标记点都渲染完成，以及图标预加载完成
+  const allDataLoaded = !loadingState.dataLoading && !loadingState.managementLoading && !loadingState.serviceLoading
+  const allRendered = loadingState.mapRendered && loadingState.markersRendered
+  const iconsReady = loadingState.iconsPreloaded
+  
+  if (allDataLoaded && allRendered && iconsReady && !loadingState.allDataReady) {
+    loadingState.allDataReady = true
+    console.log('所有数据加载完成，地图和标记点都渲染完成，图标预加载完成，页面就绪！')
+    
+    // 确保全局加载遮罩被隐藏
+    updateGlobalLoading()
+    
+    // 添加一个小延时，确保用户能看到完整的渲染效果
+    setTimeout(() => {
+      console.log('页面加载完成，显示给用户')
+    }, 200)
+  }
+}
+
+// 简化的初始化流程 - 参考场所保障页面
+const initializeApp = async () => {
+  console.log('开始初始化应用...')
+  
+  // 立即显示初始加载状态，防止用户看到空白页面
+  loadingState.mapLoading = true
+  updateGlobalLoading()
+  
+  // 1. 初始化地图
+  await initMap()
+  
+  // 2. 等待地图完全初始化
+  setTimeout(async () => {
+    console.log('地图初始化完成，开始加载数据...')
+    
+    // 3. 根据当前场景加载数据
+    const currentScene = metricsState.sceneActive
+    
+    if (currentScene === 'publicSecurity') {
+      await fetchAllMetrics()
+    } else if (currentScene === 'publicManagement') {
+      await fetchAllManagementAndLog()
+    } else if (currentScene === 'publicService') {
+      await fetchAllServiceAndLog()
+    } else {
+      await fetchAllMetrics()
+    }
+    
+    // 4. 数据加载完成后立即渲染
+    console.log('数据加载完成，立即渲染点位')
+    renderMetricMarkers()
+    
+    // 后台并行加载其他数据
+    if (currentScene !== 'publicSecurity') {
+      fetchAllMetrics().catch(console.error)
+    }
+    if (currentScene !== 'publicManagement') {
+      fetchAllManagementAndLog().catch(console.error)
+    }
+    if (currentScene !== 'publicService') {
+      fetchAllServiceAndLog().catch(console.error)
+    }
+  }, 1000)
+}
 
 onMounted(() => {
-  initMap()
-  fetchAllMetrics()
-  fetchAllManagementAndLog()
-  fetchAllServiceAndLog()
+  // 设置 REM 响应式
+  setRem()
+  window.addEventListener('resize', setRem)
+  
+  initializeApp().catch(error => {
+    console.error('应用初始化失败:', error)
+  })
+})
+
+// 组件卸载时清理资源
+onUnmounted(() => {
+  // 清理 REM 监听器
+  window.removeEventListener('resize', setRem)
+  
+  // 清理定时器
+ 
+  // 清理弹窗
+  cleanupPopups()
+  
+
+  
+  // 清理全局加载遮罩
+  if (globalLoading) {
+    globalLoading.close()
+    globalLoading = null
+  }
+  
+  // 重置渲染状态
+  loadingState.mapRendered = false
+  loadingState.markersRendered = false
+  loadingState.allDataReady = false
+  
+  console.log('组件已清理，资源释放完成')
 })
 
 /** 根据当前场景/Tab 返回图标与弹窗标题 */
@@ -996,6 +1469,15 @@ const getLayerAsset = () => {
   }
 }
 
+// 简化的渲染函数，直接渲染
+const directRender = () => {
+  try {
+    renderMetricMarkers()
+  } catch (e) {
+    console.warn('渲染标记点失败:', e)
+  }
+}
+
 /** 清理旧弹窗 DOM 与登记 */
 const cleanupPopups = () => {
   try { popupDomList.forEach((el) => el?.remove?.()) } catch {}
@@ -1003,13 +1485,19 @@ const cleanupPopups = () => {
   try { popups.length = 0 } catch {}
 }
 
-/** 渲染指标点位到地图 */
+/** 渲染指标点位到地图 - 简化版本，参考场所保障页面 */
 const renderMetricMarkers = () => {
-  if (!esriModules || !gisMap.value || !mapView.value) return
+  console.log('开始渲染地图标记点...')
+  
+  if (!esriModules || !gisMap.value || !mapView.value) {
+    console.warn('地图资源未准备好，跳过渲染')
+    return
+  }
   if (!metricsLayer.value) {
     metricsLayer.value = new esriModules.GraphicsLayer()
     gisMap.value.add(metricsLayer.value)
   }
+  
   // 清理
   metricsLayer.value.removeAll()
   cleanupPopups()
@@ -1021,22 +1509,32 @@ const renderMetricMarkers = () => {
       : metricsState.sceneActive === 'publicService'
         ? (metricsState.serviceNetworkQuality || [])
         : (currentList.value || [])
-  console.log('metrics.renderMarkers', metricsState.panel.activeTab, 'listLen=', list.length, icon)
+        
+  console.log(`渲染标记点: ${metricsState.sceneActive} - ${metricsState.panel.activeTab}, 数量: ${list.length}`)
+  console.log('渲染列表:', list)
+  
+  // 简化渲染逻辑，参考场所保障页面
+  const graphics = []
+  
   for (const item of list) {
     const lon = item?.longitude
     const lat = item?.latitude
     if (lon == null || lat == null) continue
+    
     // 公共管理下根据类型选择不同图标
     const markerIcon = (metricsState.sceneActive === 'publicManagement')
       ? (item?.type === 'plant' ? plantIcon : liquidIcon)
       : icon
+      
     const marker = createMarkerGraphic(
       [lon, lat],
       markerIcon,
       { id: item?.id, type: metricsState.panel.activeTab },
       { width: 28, height: 34 }
     )
-    if (marker) metricsLayer.value.add(marker)
+    if (marker) {
+      graphics.push(marker)
+    }
 
     // 简易弹窗
     const el = document.createElement('div')
@@ -1051,6 +1549,7 @@ const renderMetricMarkers = () => {
     el.style.border = '1px solid rgba(255,255,255,0.2)'
     el.style.borderRadius = '6px'
     el.style.fontSize = '12px'
+    
     // 公共服务：标题使用点位名称，展示关键指标
     if (metricsState.sceneActive === 'publicService') {
       const lines = [
@@ -1070,7 +1569,17 @@ const renderMetricMarkers = () => {
     createMarkerPopup(el, [lon, lat])
     el.style.display = 'block'
   }
-  updateAllPopupPositions()
+  
+  // 批量添加标记点
+  if (graphics.length > 0) {
+    metricsLayer.value.addMany(graphics)
+  }
+  
+  console.log(`渲染完成: ${graphics.length}个标记点`)
+  
+  // 标记渲染完成
+  loadingState.markersRendered = true
+  checkAllRenderComplete()
 }
 
 // 当数据或 Tab 变化时重绘（需在 panel 初始化后注册）
@@ -1081,7 +1590,7 @@ metricsState.panel = reactive({
   activeTab: 'river' as 'river' | 'reservoir' | 'tunnel' | 'ponding'
 })
 
-// 注册重绘监听
+// 简化的监听器，直接渲染
 stopMetricsWatcher = watch(
   [
     () => metricsState.panel.activeTab,
@@ -1093,7 +1602,7 @@ stopMetricsWatcher = watch(
     () => metricsState.pmPipes                 // 公共管理：管网监测数据变化时重绘
   ],
   () => {
-    try { renderMetricMarkers() } catch (e) { console.warn('渲染指标点位失败', e) }
+    directRender() // 直接渲染
   },
   { deep: true }
 )
@@ -1168,19 +1677,48 @@ const currentList = computed<any[]>(() => {
   switch (metricsState.panel.activeTab) {
     case 'river': {
       const data = metricsState.riverCondition as any
-      return (data && Array.isArray(data.detailList)) ? data.detailList : []
+      // 尝试多种数据结构
+      if (data && Array.isArray(data.detailList)) {
+        return data.detailList
+      } else if (data && Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      }
+      return []
     }
     case 'reservoir': {
       const data = metricsState.reservoirCondition as any
-      return (data && Array.isArray(data.detailList)) ? data.detailList : []
+      if (data && Array.isArray(data.detailList)) {
+        return data.detailList
+      } else if (data && Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      }
+      return []
     }
     case 'tunnel': {
       const data = metricsState.watergateCondition as any
-      return (data && Array.isArray(data.detailList)) ? data.detailList : []
+      if (data && Array.isArray(data.detailList)) {
+        return data.detailList
+      } else if (data && Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      }
+      return []
     }
     case 'ponding': {
       const data = metricsState.carResource as any
-      return (data && Array.isArray(data.detailList)) ? data.detailList : []
+      if (data && Array.isArray(data.detailList)) {
+        return data.detailList
+      } else if (data && Array.isArray(data)) {
+        return data
+      } else if (data && data.data && Array.isArray(data.data)) {
+        return data.data
+      }
+      return []
     }
     default:
       return []
@@ -1314,42 +1852,66 @@ metricsState.goPlantDetail = (row: any) => {
   if (id == null) return
   router.push({ name: 'MetricsPlantDetail', params: { id } })
 }
+
+// 图片加载事件处理
+const onImageLoad = (type: string, event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.log(`底部按钮图片加载成功: ${type} - ${img.src.split('/').pop()}`)
+}
+
+const onImageError = (type: string, event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.warn(`底部按钮图片加载失败: ${type} - ${img.src}`)
+  
+  // 可以在这里设置默认图片或重试机制
+  // img.src = defaultIconPath
+}
 </script>
 <style lang="scss" scoped>
 #mapContainer {
-  width: 100%;
-  height: calc(100vh - 56px);
+  width: 100vw;  /* 设计稿宽度 */
+  height: calc(100vh - 0.6rem); /* 100vh - 0.6rem(菜单栏高度，响应式) */
   position: relative;
 }
 
-/* 底部三项操作 */
+/* 底部三项操作 - REM响应式优化 */
 .bottom-actions {
   position: absolute;
-  left: 50%;
-  bottom: 20px;
+  left: 9.6rem;  /* 960px / 100 = 9.6rem，居中定位 */
+  bottom: 0;     /* 贴合底部 */
   transform: translateX(-50%);
   z-index: 1000;
   display: flex;
-  gap: 40px;
+  gap: 0.4rem;     /* 40px / 100 = 0.4rem */
   align-items: flex-end;
-  padding: 18px 36px 12px; /* 给底板留出内边距 */
+  padding: 0.35rem 0.36rem 0.15rem; /* 35px 36px 15px → 0.35rem 0.36rem 0.15rem，进一步增加上内边距，让内容更高 */
   
-  /* 半透明圆角底板 */
+  /* 隐藏的图片预渲染容器 */
+  .preload-images {
+    position: absolute;
+    top: -9999px; /* 移出视线但不使用 display: none，让浏览器可以加载图片 */
+    left: -9999px;
+    pointer-events: none;
+    opacity: 0;
+  }
+  
+  /* 梯形底板 */
   &::before {
     content: '';
     position: absolute;
     left: 50%;
     bottom: 0;
     transform: translateX(-50%);
-    width: min(1000px, 80vw);
-    min-width: 560px;
-    height: 78px;
+    width: 6.86rem;  /* 686px / 100 = 6.86rem，指定宽度 */
+    height: 0.58rem; /* 58px / 100 = 0.58rem，调整为0.58rem */
     background: linear-gradient(180deg, rgba(17, 50, 92, 0.72) 0%, rgba(10, 30, 60, 0.72) 100%);
     border: 1px solid rgba(74, 144, 226, 0.35);
+    border-bottom: none; /* 底部无边框，贴合底部 */
     box-shadow:
       0 10px 26px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    border-radius: 26px;
+    /* 创建梯形：上边比下边窄 */
+    clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
     backdrop-filter: blur(8px);
     z-index: -1;
   }
@@ -1359,7 +1921,7 @@ metricsState.goPlantDetail = (row: any) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem */ /* 增加图片和文字之间的间距 */
   cursor: pointer;
   user-select: none;
   transition: transform 0.2s ease, filter 0.2s ease;
@@ -1372,27 +1934,19 @@ metricsState.goPlantDetail = (row: any) => {
 }
 
 .action-icon {
-  width: 88px;
-  height: 72px;
-  padding-top: 12px;
-  // background: linear-gradient(180deg, rgba(20, 55, 103, 0.95) 0%, rgba(11, 32, 64, 0.9) 100%);
-  // border: 2px sol rgba(74, 144, 226, 0.6);
-  // border-radius: 12px 12px 18px 18px;
-  // box-shadow:
-  //   0 8px 24px rgba(0, 0, 0, 0.5),
-  //   inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  // backdrop-filter: blur(8px);
+  width: 0.85rem;  /* 85px / 100 = 0.85rem，操作图标跟随整体缩放 */
+  height: 0.75rem; /* 75px / 100 = 0.75rem */
+  padding-top: 0.08rem; /* 8px / 100 = 0.08rem，调整内边距 */
   display: flex;
   align-items: flex-start;
   justify-content: center;
   position: relative;
   z-index: 1;
-
 }
 
 .action-icon i {
-  width: 40px;
-  height: 40px;
+  width: 0.4rem;   /* 40px / 100 = 0.4rem，小图标跟随整体缩放 */
+  height: 0.4rem;  /* 40px / 100 = 0.4rem */
   // border-radius: 50%;
   // background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.75) 100%);
   // box-shadow:
@@ -1401,90 +1955,63 @@ metricsState.goPlantDetail = (row: any) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 0.22rem;  /* 22px → 0.22rem，操作按钮文字跟随整体缩放 */
 }
 
 .action-icon img {
-  width: 84px;
-  height: 78px;
+  width: 0.85rem;  /* 85px / 100 = 0.85rem，图标图片跟随整体缩放 */
+  height: 0.75rem; /* 75px / 100 = 0.75rem */
   object-fit: contain;
   border-radius: 50%;
 }
 
 .action-label {
-  color: #fff;
-  font-size: 14px;
+  color: #fff; /* 所有文字默认为白色 */
+  font-size: 0.14rem;  /* 14px → 0.14rem，按钮文字跟随整体缩放 */
   font-weight: 600;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
-// /* 三个不同主题色的发光边 */
-// .action-item.secure .action-icon { border-color: rgba(74, 144, 226, 0.8); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 24px rgba(74, 144, 226, 0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
-// .action-item.manage .action-icon { border-color: rgba(46, 204, 113, 0.8); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 24px rgba(46, 204, 113, 0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
-// .action-item.service .action-icon { border-color: rgba(155, 89, 182, 0.8); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 24px rgba(155, 89, 182, 0.25), inset 0 1px 0 rgba(255,255,255,0.15); }
-
-/* 标签色调，与图标主题呼应 */
-.action-item.secure .action-label { color: #ffd666; }
-.action-item.manage .action-label { color: #c6ffdd; }
-.action-item.service .action-label { color: #eac6ff; }
-
-/* 小屏适配 */
-@media (max-width: 768px) {
-  .bottom-actions {
-    gap: 24px;
-    bottom: 16px;
-  }
-  .action-icon {
-    width: 76px;
-    height: 64px;
-  }
-  .bottom-actions::before {
-    height: 70px;
-  }
+/* 选中项文字颜色 */
+.action-item.secure.active .action-label,
+.action-item.manage.active .action-label,
+.action-item.service.active .action-label {
+  color: #F2C36C; /* 选中项使用金色 */
 }
-
-@media (max-width: 480px) {
-  .bottom-actions {
-    gap: 16px;
-    bottom: 12px;
-  }
-  .action-icon {
-    width: 68px;
-    height: 56px;
-  }
-  .action-label {
-    font-size: 13px;
-  }
-  .bottom-actions::before {
-    height: 64px;
-    min-width: 480px;
-  }
-}
-/* 悬浮面板样式 */
 .floating-panel {
   position: absolute;
-  top: 80px;
+  top: 50%;       /* 垂直居中 */
+  transform: translateY(-50%); /* 垂直居中 */
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  height: calc(100vh - 100px); /* 顶部80 + 底部20 留出同上间距 */
+  gap: 0.2rem;     /* 20px / 100 = 0.2rem */
+  height: 9.7rem;  /* 970px / 100 = 9.7rem，指定高度 */
+  width: 4.9rem;   /* 490px / 100 = 4.9rem，指定宽度 */
   overflow-y: auto;
+  margin: 0;
+  padding: 0;
   
   &.left-panel {
-    left: 20px;
-    width: 480px;
+    left: 0.24rem;   /* 24px / 100 = 0.24rem，统一边距为24px */
+    top: 0.84rem;    /* 0.6rem(菜单高度) + 0.24rem(边距) = 0.84rem */
+    bottom: 0.24rem; /* 24px / 100 = 0.24rem，下边距 */
+    transform: none; /* 取消垂直居中，使用top/bottom定位 */
   }
   
   &.right-panel {
-    right: 20px;
-    width: 480px;
+    right: 0.24rem;  /* 24px / 100 = 0.24rem，统一边距为24px */
+    top: 0.84rem;    /* 0.6rem(菜单高度) + 0.24rem(边距) = 0.84rem */
+    bottom: 0.24rem; /* 24px / 100 = 0.24rem，下边距 */
+    transform: none; /* 取消垂直居中，使用top/bottom定位 */
   }
 }
 
-/* 公共服务：右侧两个面板共享高度，分别各占 1/2 */
+
 .right-two-panels {
-  height: calc(100vh - 100px);
+  top: 0.84rem;    /* 0.6rem(菜单高度) + 0.24rem(边距) = 0.84rem */
+  bottom: 0.24rem; /* 24px / 100 = 0.24rem，下边距 */
+  transform: none; /* 取消垂直居中，使用top/bottom定位 */
 }
 .right-two-panels > .panel-container {
   flex: 1 1 0;
@@ -1502,46 +2029,48 @@ metricsState.goPlantDetail = (row: any) => {
 .ps-top3 {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0.14rem;  /* 14px / 100 = 0.14rem */
 }
 .ps-top3 .plant-block {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.1rem;   /* 10px / 100 = 0.1rem */
 }
 .ps-top3 .plant-title {
   color: #e6f4ff;
-  font-size: 14px;
+  font-size: 0.14rem;  /* 14px → 0.14rem，面板标题跟随整体缩放 */
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 .row-cards.compact {
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem */
 }
-.row-cards.compact .metric-card { padding: 12px; }
-.row-cards.compact .metric-card .card-label { font-size: 12px; margin-bottom: 6px; }
-.row-cards.compact .metric-card .card-value { font-size: 20px; }
+.row-cards.compact .metric-card { padding: 0.12rem; /* 12px / 100 = 0.12rem */ }
+.row-cards.compact .metric-card .card-label { font-size: clamp(10px, 0.7vw, 14px); margin-bottom: 0.06rem; /* 数据标签使用clamp确保可读性 */ }
+.row-cards.compact .metric-card .card-value { font-size: clamp(16px, 1.2vw, 24px); /* 数据值使用clamp确保可读性 */ }
 
 /* 公共管理两个右侧浮窗的垂直分布 */
 .right-panel--stats {
-  top: 80px;
+  top: 0.84rem;    /* 0.6rem(菜单高度) + 0.24rem(边距) = 0.84rem */
+  transform: none; /* 取消垂直居中，使用top定位 */
   /* 统计卡较矮，避免滚动条 */
   height: auto;
   overflow: visible;
 }
 .right-panel--stats .panel-container {
-  max-height: 260px;
+  max-height: 2.1rem; /* 210px / 100 = 2.1rem */
 }
 .right-panel--stats .container-content {
   flex: 0 0 auto;
 }
 
-/* 右2 占据剩余高度，内部表格滚动 */
+
 .right-panel--pipes {
-  top: calc(80px + 260px + 20px); /* 右1高度260 + 间距20 */
-  max-height: calc(100vh - (80px + 260px + 20px) - (320px + 20px)); /* 预留给右3(320)和间距20 */
+  top: 0.84rem;    /* 0.6rem(菜单高度) + 0.24rem(边距) = 0.84rem */
+  transform: none; /* 取消垂直居中，使用top定位 */
+  max-height: 3rem; /* 300px / 100 = 3rem，保持原有高度 */
   overflow-y: auto;
 }
 .right-panel--pipes .panel-container {
@@ -1552,9 +2081,9 @@ metricsState.goPlantDetail = (row: any) => {
 
 /* 右3 浮窗：固定在底部，避免与右2重叠 */
 .right-panel--river {
-  bottom: 20px;
+  bottom: 24px;  /* 下边距24px */
   top: auto;
-  height: 320px; /* 固定高度，便于右2计算剩余空间 */
+  height: 440px; /* 固定高度，便于右2计算剩余空间 */
   overflow: hidden;
 }
 .right-panel--pipes .container-content {
@@ -1571,13 +2100,14 @@ metricsState.goPlantDetail = (row: any) => {
 /* 公共管理右侧 1:3:3 栈式布局容器 */
 .right-stack {
   position: absolute;
-  right: 20px;
-  top: 80px;
-  width: 480px;
-  height: calc(100vh - 100px);
+  right: 0.24rem;  /* 24px / 100 = 0.24rem，统一边距为24px */
+  top: 50%;        /* 垂直居中 */
+  transform: translateY(-50%); /* 垂直居中 */
+  width: 4.9rem;  /* 490px / 100 = 4.9rem，固定宽度 */
+  height: 9.7rem; /* 970px / 100 = 9.7rem，固定高度 */
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0.2rem;    /* 20px / 100 = 0.2rem */
 }
 .right-stack .panel-container.flex-1 { flex: 1 1 0; }
 .right-stack .panel-container.flex-3 { flex: 3 1 0; }
@@ -1599,13 +2129,13 @@ metricsState.goPlantDetail = (row: any) => {
     color: #e6f4ff;
     font-weight: 600;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 8px 0;
-    font-size: 12px;
+    padding: 0.08rem 0;  /* 8px / 100 = 0.08rem */
+    font-size: clamp(10px, 0.7vw, 14px);  /* 表格内容使用clamp确保可读性 */
   }
   :deep(.el-table td.el-table__cell) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 6px 0;
-    font-size: 12px;
+    padding: 0.06rem 0;  /* 6px / 100 = 0.06rem */
+    font-size: clamp(10px, 0.7vw, 14px);  /* 表格内容使用clamp确保可读性 */
   }
   :deep(.el-table__body tr:hover>td),
   :deep(.el-table__body tr.el-table__row:hover>td) {
@@ -1624,18 +2154,19 @@ metricsState.goPlantDetail = (row: any) => {
 
 /* 右3 卡片缩小，图表更大 */
 .right3-panel .right3-cards-row .metric-card {
-  padding: 12px;
+  padding: 0.12rem;  /* 12px / 100 = 0.12rem */
 }
-.right3-panel .right3-cards-row .metric-card .card-label { font-size: 11px; margin-bottom: 6px; }
-.right3-panel .right3-cards-row .metric-card .card-value { font-size: 20px; }
+.right3-panel .right3-cards-row .metric-card .card-label { font-size: clamp(9px, 0.6vw, 13px); margin-bottom: 6px; /* 右侧面板标签使用clamp */ }
+.right3-panel .right3-cards-row .metric-card .card-value { font-size: clamp(16px, 1.2vw, 24px); /* 右侧面板数值使用clamp */ }
 
 /* 容器样式 - 深色主题 */
 .panel-container {
   display: flex;             /* 作为列布局，让内容区可伸缩 */
   flex-direction: column;
   min-height: 0;             /* 允许在父级 flex 容器内收缩高度 */
-  background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  backdrop-filter: blur(15px);
+  // background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
+  background: linear-gradient( 180deg, rgba(0,40,96,0) 0%, rgba(0,42,95,0.09) 23%, rgba(0,42,97,0.24) 45%, rgba(0,40,96,0.27) 100%), linear-gradient( 180deg, rgba(16,98,222,0.12) 0%, rgba(17,96,219,0.11) 55%, rgba(19,98,215,0.05) 76%, rgba(0,95,223,0.03) 100%), rgba(0,15,42,0.7);
+  // backdrop-filter: blur(15px);
   border-radius: 12px;
   border: 2px solid rgba(74, 144, 226, 0.6);
   box-shadow: 
@@ -1645,7 +2176,6 @@ metricsState.goPlantDetail = (row: any) => {
   transition: all 0.3s ease;
   
   &:hover {
-    transform: translateY(-2px);
     border-color: rgba(74, 144, 226, 0.8);
     box-shadow: 
       0 12px 40px rgba(0, 0, 0, 0.5),
@@ -1659,21 +2189,35 @@ metricsState.goPlantDetail = (row: any) => {
 }
 
 /* 左侧三个面板的纵向比例控制（1:2:3） */
-.left-panel .panel-container.flex-1 { flex: 1 1 0; }
+.left-panel .panel-container.flex-1 { 
+  flex: 1 1 0; 
+  min-height: 120px; /* 确保有足够的最小高度 */
+}
 .left-panel .panel-container.flex-2 { flex: 2 1 0; }
 .left-panel .panel-container.flex-3 { flex: 3 1 0; }
 
 /* 容器头部 - 深色主题 */
 .container-header {
-  background: linear-gradient(90deg, rgba(74, 144, 226, 0.9) 0%, rgba(74, 144, 226, 0.6) 30%, rgba(74, 144, 226, 0.3) 60%, rgba(74, 144, 226, 0.1) 80%, transparent 100%);
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(74, 144, 226, 0.1) 20%, 
+    rgba(74, 144, 226, 0.3) 40%, 
+    rgba(74, 144, 226, 0.6) 50%, 
+    rgba(74, 144, 226, 0.3) 60%, 
+    rgba(74, 144, 226, 0.1) 80%, 
+    transparent 100%
+  );
   color: white;
-  padding: 16px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(74, 144, 226, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem */
+  // border-bottom: 1px solid rgba(74, 144, 226, 0.3);
+  // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   position: relative;
+  width: 4.6rem;   /* 460px / 100 = 4.6rem，头部宽度跟随整体缩放 */
+  height: 0.28rem;  /* 28px / 100 = 0.28rem，头部高度跟随整体缩放 */
+  padding: 0.08rem;   /* 8px / 100 = 0.08rem */
+  margin: 0.12rem 0.12rem;  /* 12px / 100 = 0.12rem */
   
   /* 添加一个额外的渐变层来增强效果 */
   &::before {
@@ -1683,34 +2227,40 @@ metricsState.goPlantDetail = (row: any) => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg, rgba(53, 122, 189, 0.4) 0%, rgba(53, 122, 189, 0.2) 50%, transparent 100%);
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(53, 122, 189, 0.1) 25%, 
+      rgba(53, 122, 189, 0.4) 50%, 
+      rgba(53, 122, 189, 0.1) 75%, 
+      transparent 100%
+    );
     pointer-events: none;
   }
   
   .header-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
-    border-radius: 50%;
+    width: 0.32rem;  /* 32px / 100 = 0.32rem，图标容器跟随整体缩放 */
+    height: 0.32rem; /* 32px / 100 = 0.32rem */
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 
-      0 2px 8px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
     position: relative;
     z-index: 1;
     
+    .title-icon {
+      width: 0.25rem;  /* 25px / 100 = 0.25rem，标题图标跟随整体缩放 */
+      height: 0.25rem; /* 25px / 100 = 0.25rem */
+    }
+    
     i {
-      width: 16px;
-      height: 16px;
+      width: 0.16rem;  /* 16px / 100 = 0.16rem，小图标跟随整体缩放 */
+      height: 0.16rem; /* 16px / 100 = 0.16rem */
       background: none;
       border-radius: 2px;
       
       &.icon-supervision::before {
         content: "🔍";
         color: #4A90E2;
-        font-size: 14px;
+        font-size: 0.14rem;  /* 14px → 0.14rem，图标文字跟随整体缩放 */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1720,7 +2270,7 @@ metricsState.goPlantDetail = (row: any) => {
       
       &.icon-rainfall::before {
         content: "🌧️";
-        font-size: 14px;
+        font-size: 0.14rem;  /* 14px → 0.14rem，图标文字跟随整体缩放 */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1730,7 +2280,7 @@ metricsState.goPlantDetail = (row: any) => {
       
       &.icon-warning::before {
         content: "⚠️";
-        font-size: 14px;
+        font-size: 0.14rem;  /* 14px → 0.14rem，图标文字跟随整体缩放 */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1742,9 +2292,11 @@ metricsState.goPlantDetail = (row: any) => {
   
   h3 {
     margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
+    font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Hiragino Sans GB', 'WenQuanYi Micro Hei', sans-serif;
+    font-weight: normal;
+    font-size: 0.16rem;  /* 16px → 0.16rem，界面文字跟随整体缩放 */
+    color: #FFFFFF;
+    text-shadow: 0px 0px 7px rgba(75,180,229,0.69), 0px 2px 8px rgba(5,28,55,0.42);
     position: relative;
     z-index: 1;
   }
@@ -1752,12 +2304,18 @@ metricsState.goPlantDetail = (row: any) => {
 
 /* 容器内容 */
 .container-content {
-  padding: 20px;
+  padding: 0.2rem;   /* 20px / 100 = 0.2rem */
   flex: 1 1 auto;    /* 填满面板剩余空间 */
   min-height: 0;     /* 避免因内容撑开导致比例失效 */
   display: flex;      /* 让内部列表可按剩余高度伸展 */
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.3);
+  // background: rgba(0, 0, 0, 0.3);
+}
+
+/* 污水处理检测容器内容优化 */
+.left-panel .panel-container.flex-1 .container-content {
+  padding: 0.16rem 0.2rem 0.2rem 0.2rem; /* 16px 20px 20px 20px → rem，调整上边距，给卡片更多空间 */
+  justify-content: flex-start;
 }
 
 /* 表格自适应容器剩余高度 */
@@ -1782,35 +2340,36 @@ metricsState.goPlantDetail = (row: any) => {
 .chart-title {
   margin-top: 10px;
   color: #e6f4ff;
-  font-size: 14px;
+  font-size: 0.14rem;  /* 14px → 0.14rem，标题文字跟随整体缩放 */
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
 /* 右3 上方卡片：紧凑样式 */
 .stats-row--compact .metric-card { padding: 12px; }
-.stats-row--compact .metric-card .card-label { font-size: 11px; margin-bottom: 6px; }
-.stats-row--compact .metric-card .card-value { font-size: 20px; }
+.stats-row--compact .metric-card .card-label { font-size: clamp(9px, 0.6vw, 13px); margin-bottom: 6px; /* 紧凑卡片标签使用clamp */ }
+.stats-row--compact .metric-card .card-value { font-size: clamp(16px, 1.2vw, 24px); /* 紧凑卡片数值使用clamp */ }
 
 /* 督导检查 - 指标卡片样式 */
 .metric-cards {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0.16rem;  /* 16px / 100 = 0.16rem */
 }
 
 .row-cards {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem */
   flex-wrap: wrap;
+  margin-bottom: 8px; /* 添加底部间距 */
 }
 
 .row-cards .metric-card {
   flex: 1 1 0;
   min-width: 0;
-  padding: 14px;
+  padding: 0.14rem;  /* 14px / 100 = 0.14rem */
 }
 
 /* 两行卡片排布：5张卡片在两行内自动换行 */
@@ -1818,25 +2377,38 @@ metricsState.goPlantDetail = (row: any) => {
 .two-rows {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
+  gap: 0.1rem;   /* 10px / 100 = 0.1rem */
 }
 .two-rows .metric-card { grid-column: span 2; }
 .two-rows .metric-card:nth-child(n+4) { grid-column: span 3; }
 
-/* 左1横排卡片（公共管理-污水处理检测）缩小字号与卡片内边距，避免溢出 */
-.left-panel .row-cards .metric-card .card-label {
-  font-size: 11px;
-  margin-bottom: 8px;
+/* 左1横排卡片（公共管理-污水处理检测）优化高度和间距 */
+.left-panel .row-cards .metric-card {
+  height: auto; /* 改为自适应高度 */
+  min-height: 100px; /* 设置最小高度确保内容完整显示 */
+  padding: 0.16rem 0.12rem; /* 16px 12px → rem，调整内边距 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
+
+.left-panel .row-cards .metric-card .card-label {
+  font-size: clamp(10px, 0.7vw, 14px); /* 数据标签使用clamp确保可读性 */
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
 .left-panel .row-cards .metric-card .card-value {
-  font-size: 22px;
+  font-size: clamp(20px, 1.5vw, 30px); /* 数据值使用clamp确保可读性 */
+  font-weight: 600;
+  line-height: 1.1;
 }
 
 /* 右侧面板 - 横向统计卡片行 */
 .stats-row {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem */
+  margin-top: 0.08rem;  /* 8px / 100 = 0.08rem */
   margin-bottom: 8px;
   flex-wrap: wrap;
 }
@@ -1847,6 +2419,53 @@ metricsState.goPlantDetail = (row: any) => {
 .tabs-compact {
   margin-top: -6px;
   margin-bottom: 6px;
+}
+
+/* 自定义 tabs 样式，参考 dispatch 页面 */
+.custom-tabs {
+  margin-top: -6px;
+  margin-bottom: 6px;
+}
+
+.custom-tabs-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 0;
+  margin-bottom: 8px;
+  padding: 0 0 4px 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.custom-tab-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  border: none;
+  font-size: 0.14rem;  /* 14px → 0.14rem，按钮文字跟随整体缩放 */
+  padding: 0.04rem 0.12rem;  /* 4px 12px → rem */
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-tab-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.custom-tab-btn.active {
+  color: #9fd1ff;
+  position: relative;
+}
+
+.custom-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  background: #4a90e2;
 }
 
 /* 右侧表格深色主题，参考 dispatch 页面 */
@@ -1927,7 +2546,7 @@ metricsState.goPlantDetail = (row: any) => {
     background: rgba(255, 255, 255, 0.03);
   }
 }
-/* 左侧面板 Tabs 样式（去掉白色边线，统一深色风格） */
+/* 左侧面板 Tabs 样式（优化白边效果，统一深色风格） */
 .left-panel {
   :deep(.el-tabs__header) {
     margin: 0 0 6px;
@@ -1938,24 +2557,35 @@ metricsState.goPlantDetail = (row: any) => {
   }
   :deep(.el-tabs__item) {
     color: #cfe8ff;
+    border: none;
+    background: transparent;
   }
   :deep(.el-tabs__item.is-active) {
     color: #ffffff;
     font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
   }
   :deep(.el-tabs__active-bar) {
     background-color: #66A9FF;
+    height: 3px;
+    border-radius: 2px;
   }
 }
 
 .metric-card {
   background: linear-gradient(135deg, rgba(74, 144, 226, 0.2) 0%, rgba(53, 122, 189, 0.3) 100%);
   border-radius: 12px;
-  padding: 20px;
+  padding: 0.2rem;   /* 20px / 100 = 0.2rem */
   text-align: center;
   border: 2px solid rgba(74, 144, 226, 0.4);
   position: relative;
   transition: all 0.3s ease;
+  height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   box-shadow: 
     0 4px 16px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -1969,32 +2599,64 @@ metricsState.goPlantDetail = (row: any) => {
       inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
   
+  // 第一个卡片 - 绿色文字
+  &:nth-child(1) {
+    .card-label {
+      color: #3EEAB7;
+    }
+    .card-value {
+      color: #3EEAB7;
+    }
+  }
+  
+  // 第二个卡片 - 橙色文字
+  &:nth-child(2) {
+    .card-label {
+      color: #FF722C;
+    }
+    .card-value {
+      color: #FF722C;
+    }
+  }
+  
+  // 第三个卡片 - 红色文字
+  &:nth-child(3) {
+    .card-label {
+      color: #FF5353;
+    }
+    .card-value {
+      color: #FF5353;
+    }
+  }
+  
   .card-label {
-    font-size: 13px;
+    font-size: clamp(11px, 0.75vw, 15px);  /* 卡片标签使用clamp确保可读性 */
     color: rgba(255, 255, 255, 0.8);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-weight: 500;
+    line-height: 1.2;
   }
   
   .card-value {
-    font-size: 28px;
+    font-size: clamp(22px, 1.8vw, 36px);  /* 卡片数值使用clamp确保可读性 */
     color: #ffffff;
     font-weight: bold;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    line-height: 1;
   }
 }
 
 /* 雨量分布样式 */
 .rainfall-content {
   display: flex;
-  gap: 20px;
+  gap: 0.2rem;   /* 20px / 100 = 0.2rem */
 }
 
 .rainfall-map {
   flex: 1;
   background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(53, 122, 189, 0.2) 100%);
   border-radius: 8px;
-  padding: 20px;
+  padding: 0.2rem;   /* 20px / 100 = 0.2rem */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2003,7 +2665,7 @@ metricsState.goPlantDetail = (row: any) => {
   
   .map-placeholder {
     color: rgba(255, 255, 255, 0.6);
-    font-size: 14px;
+    font-size: 0.14rem;  /* 14px → 0.14rem，地图提示文字跟随整体缩放 */
   }
 }
 
@@ -2011,14 +2673,14 @@ metricsState.goPlantDetail = (row: any) => {
   width: 120px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.08rem;  /* 8px / 100 = 0.08rem */
 }
 
 .legend-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
+  padding: 0.04rem 0;  /* 4px / 100 = 0.04rem */
   
   &.highlight {
     .legend-label {
@@ -2027,12 +2689,12 @@ metricsState.goPlantDetail = (row: any) => {
   }
   
   .legend-label {
-    font-size: 12px;
+    font-size: clamp(10px, 0.7vw, 14px);  /* 图例标签使用clamp确保可读性 */
     color: white;
   }
   
   .legend-count {
-    font-size: 12px;
+    font-size: clamp(10px, 0.7vw, 14px);  /* 图例数值使用clamp确保可读性 */
     color: white;
     font-weight: 600;
   }
@@ -2042,7 +2704,7 @@ metricsState.goPlantDetail = (row: any) => {
 .warning-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.08rem;  /* 8px / 100 = 0.08rem */
   flex: 1 1 auto;     /* 占满可用高度 */
   min-height: 0;      /* 允许在父容器内收缩 */
   overflow-y: auto;   /* 超出滚动 */
@@ -2059,12 +2721,12 @@ metricsState.goPlantDetail = (row: any) => {
 .warning-item {
   background: linear-gradient(135deg, rgba(74, 144, 226, 0.12) 0%, rgba(53, 122, 189, 0.22) 100%);
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 0.12rem 0.14rem;  /* 12px 14px → rem */
   border: 1px solid rgba(74, 144, 226, 0.3);
   display: flex;
   align-items: center;
   justify-content: space-between; /* 左右布局 */
-  gap: 10px;
+  gap: 0.1rem;   /* 10px / 100 = 0.1rem */
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   
@@ -2077,7 +2739,7 @@ metricsState.goPlantDetail = (row: any) => {
   .warning-main {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0.04rem;  /* 4px / 100 = 0.04rem */
     min-width: 0; /* 使文本在 flex 中可收缩 */
   }
   
@@ -2085,17 +2747,17 @@ metricsState.goPlantDetail = (row: any) => {
     display: flex;
     flex-direction: column;
     align-items: flex-end; /* 右对齐 */
-    gap: 6px;
+    gap: 0.06rem;  /* 6px / 100 = 0.06rem */
     flex: 0 0 auto;
   }
   
   .warning-type {
-    font-size: 12px;
+    font-size: clamp(10px, 0.7vw, 14px);  /* 警告类型使用clamp确保可读性 */
     color: rgba(255, 255, 255, 0.7);
   }
   
   .warning-message {
-    font-size: 14px;
+    font-size: clamp(12px, 0.85vw, 16px);  /* 警告信息使用clamp确保可读性 */
     color: white;
     font-weight: 500;
     line-height: 1.4;
@@ -2104,9 +2766,9 @@ metricsState.goPlantDetail = (row: any) => {
   
   .warning-tag {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 0.02rem 0.08rem;  /* 2px 8px → rem */
     border-radius: 4px;
-    font-size: 11px;
+    font-size: clamp(9px, 0.6vw, 13px);  /* 警告标签使用clamp确保可读性 */
     font-weight: 600;
     color: white;
     width: fit-content;
@@ -2125,66 +2787,78 @@ metricsState.goPlantDetail = (row: any) => {
   }
   
   .warning-time {
-    font-size: 11px;
+    font-size: clamp(9px, 0.6vw, 13px);  /* 警告时间使用clamp确保可读性 */
     color: #999;
   }
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .floating-panel {
-    &.left-panel {
-      width: 420px;
+/* DataV自适应：移除响应式设计，统一使用1920x1080设计稿的固定尺寸 */
+
+/* Element Plus 全局加载遮罩自定义样式 */
+:deep(.metrics-global-loading) {
+  .el-loading-mask {
+    background: linear-gradient(135deg, #0a1e3c 0%, #1a2b4a 100%) !important;
+  }
+  
+  .el-loading-text {
+    color: #e6f4ff !important;
+    font-size: clamp(14px, 1vw, 18px) !important;  /* 加载文字使用clamp确保可读性 */
+    margin-top: 16px !important;
+  }
+  
+  .el-loading-spinner {
+    .circular {
+      width: 60px !important;
+      height: 60px !important;
     }
     
-    &.right-panel {
-      width: 420px;
+    .path {
+      stroke: #4A90E2 !important;
+      stroke-width: 3 !important;
     }
-  }
-  
-  .rainfall-content {
-    flex-direction: column;
-  }
-  
-  .rainfall-legend {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 12px;
   }
 }
 
-@media (max-width: 480px) {
-  .floating-panel {
-    &.left-panel {
-      left: 10px;
-      width: calc(100% - 20px);
-    }
-    
-    &.right-panel {
-      right: 10px;
-      width: calc(100% - 20px);
-    }
+/* 骨架屏样式 */
+.skeleton-loader {
+  background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
   }
-  
-  .container-header {
-    padding: 12px 16px;
-    
-    h3 {
-      font-size: 14px;
-    }
+  100% {
+    background-position: -200% 0;
   }
-  
-  .container-content {
-    padding: 16px;
-  }
-  
-  .metric-card {
-    padding: 16px;
-    
-    .card-value {
-      font-size: 20px;
-    }
-  }
+}
+
+.skeleton-card {
+  @extend .skeleton-loader;
+  height: 80px;
+  margin-bottom: 12px;
+}
+
+.skeleton-table-row {
+  @extend .skeleton-loader;
+  height: 40px;
+  margin-bottom: 0.08rem;  /* 8px / 100 = 0.08rem */
+  border-radius: 4px;
+}
+
+.table-skeleton {
+  padding: 0.12rem;  /* 12px / 100 = 0.12rem */
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.skeleton-chart {
+  @extend .skeleton-loader;
+  height: 100%;
+  border-radius: 8px;
 }
 </style>

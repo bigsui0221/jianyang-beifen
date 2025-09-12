@@ -13,10 +13,10 @@
   <!-- 左侧悬浮区域 -->
   <div class="floating-panel left-panel">
     <!-- 调度资源概况 -->
-    <div class="panel-container">
+    <div class="panel-container resource-overview">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-supervision"></i>
+          <img :src="titleIcon" alt="调度资源概况" class="title-icon" />
         </div>
         <h3>调度资源概况</h3>
       </div>
@@ -57,7 +57,7 @@
     <div class="panel-container stretch">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-unreslove"></i>
+          <img :src="titleIcon" alt="未结案事件" class="title-icon" />
         </div>
         <h3>未结案事件</h3>
       </div>
@@ -112,7 +112,7 @@
     <div class="panel-container equal" key="warehouse-panel">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-warning"></i>
+          <img :src="titleIcon" alt="仓库管理" class="title-icon" />
         </div>
         <h3>仓库管理</h3>
       </div>
@@ -154,7 +154,7 @@
     <div class="panel-container equal" key="resource-panel">
       <div class="container-header">
         <div class="header-icon">
-          <i class="icon-warning"></i>
+          <img :src="titleIcon" alt="资源调度" class="title-icon" />
         </div>
         <h3>资源调度</h3>
       </div>
@@ -345,7 +345,18 @@ import { initGisMap, createMarkerGraphic, createMarkerPopup, updatePopupPosition
 import carIcon from "@/assets/imgs/sector/car.png";
 import personIcon from "@/assets/imgs/sector/people.png";
 import warehouseIcon from "@/assets/imgs/sector/house.png";
+import titleIcon from "@/assets/imgs/sector/title-icon.png";
 import { DispatchApi } from "@/api/sector/dispatch";
+
+// REM 响应式设置 - 基于1920px设计稿
+const setRem = () => {
+  const designWidth = 1920 // 设计稿基准宽度
+  const currentWidth = window.innerWidth
+  // 计算缩放比例，以100px为基准字体大小
+  const fontSize = Math.min((currentWidth / designWidth) * 100, 200) // 限制最大200px
+  document.documentElement.style.fontSize = fontSize + 'px'
+  console.log(`[Dispatch] 屏幕宽度: ${currentWidth}px, 根字体大小: ${fontSize}px`)
+}
 
 const gisMap = shallowRef<any>(null);
 const mapView = shallowRef<any>(null);
@@ -394,7 +405,6 @@ const initMap = async () => {
   console.log(map, view);
   mapView.value = view;
   gisMap.value = map;
-  isLoading.value = false;
   // 配置 Popup：启用并固定停靠到顶部中间，避免被左右面板遮挡
   try {
     mapView.value.popup.autoOpenEnabled = true;
@@ -546,20 +556,31 @@ const testDispatchApi = async () => {
 
     console.log("=== DispatchApi 接口调用完成 ===");
     console.log("资源计数:", resourceCounts.value);
+    
+    // 数据加载完成后隐藏loading
+    isLoading.value = false;
   } catch (error) {
     console.error("调用 DispatchApi 接口时出错:", error);
+    // 即使出错也要隐藏loading
+    isLoading.value = false;
   }
 };
 
-onMounted(() => {
-  initMap();
-  // 延迟调用 API，确保地图初始化完成
-  setTimeout(() => {
-    testDispatchApi();
-  }, 2000);
+onMounted(async () => {
+  // 设置 REM 响应式
+  setRem()
+  window.addEventListener('resize', setRem)
+  
+  // 先初始化地图
+  await initMap();
+  // 地图初始化完成后再获取数据
+  await testDispatchApi();
 });
 
 onBeforeUnmount(() => {
+  // 清理 REM 监听器
+  window.removeEventListener('resize', setRem)
+  
   try {
     clickHandle?.remove?.();
   } catch {}
@@ -891,37 +912,36 @@ const stepClass = (idx: number, _step: any) => {
 </script>
 <style lang="scss" scoped>
 #mapContainer {
-  width: 100%;
-  height: calc(100vh - 56px);
+  width: 100vw;   /* 响应式宽度 */
+  height: calc(100vh - 0.6rem); /* 100vh - 0.6rem(菜单栏高度，响应式) */
   position: relative;
 }
 
 /* 悬浮面板样式 */
 .floating-panel {
   position: absolute;
-  top: 80px;
+  top: 0.84rem;     /* 24px / 100 = 0.24rem，上边距响应式 */
+  bottom: 0.24rem;  /* 24px / 100 = 0.24rem，下边距响应式 */
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
-  height: 100%;
+  gap: 0.2rem;      /* 20px / 100 = 0.2rem，间距响应式 */
+  overflow: hidden; /* 外层不滚动，由子容器滚动 */
 
   &.left-panel {
-    left: 20px;
-    width: 500px;
-    // 第二个panel-container布满剩下的高度
+    left: 0.24rem;  /* 24px / 100 = 0.24rem，左边距响应式 */
+    width: 5rem;    /* 500px / 100 = 5rem，宽度响应式 */
+    // 高度由top和bottom自动计算
+    overflow: hidden; /* 外层不滚动，由子容器滚动 */
   }
   
   &.right-panel {
-    right: 20px;
-    width: 500px;
+    right: 0.24rem; /* 24px / 100 = 0.24rem，右边距响应式 */
+    width: 5rem;    /* 500px / 100 = 5rem，宽度响应式 */
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    max-height: calc(100vh - 100px);
-    overflow: hidden; /* 外层不滚动，由子容器滚动 */
+    gap: 0.2rem;    /* 20px / 100 = 0.2rem，间距响应式 */
+    // 高度由top和bottom自动计算
   }
 }
 
@@ -929,24 +949,31 @@ const stepClass = (idx: number, _step: any) => {
 .panel-container {
   width: 100%;
   box-sizing: border-box;
-  background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  backdrop-filter: blur(15px);
-  border-radius: 12px;
-  border: 2px solid rgba(74, 144, 226, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: linear-gradient( 180deg, rgba(0,40,96,0) 0%, rgba(0,42,95,0.09) 23%, rgba(0,42,97,0.24) 45%, rgba(0,40,96,0.27) 100%), linear-gradient( 180deg, rgba(16,98,222,0.12) 0%, rgba(17,96,219,0.11) 55%, rgba(19,98,215,0.05) 76%, rgba(0,95,223,0.03) 100%), rgba(0,15,42,0.7);
+  border-radius: 0.12rem;  /* 12px / 100 = 0.12rem，圆角响应式 */
+  border: 0.02rem solid rgba(74, 144, 226, 0.6);  /* 2px / 100 = 0.02rem */
+  box-shadow: 
+    0 0.08rem 0.32rem rgba(0, 0, 0, 0.4),  /* 0 8px 32px → rem */
+    inset 0 0.01rem 0 rgba(255, 255, 255, 0.1);  /* 0 1px 0 → rem */
   overflow: hidden;
   transition: all 0.3s ease;
   /* 让面板默认按内容高度渲染 */
   flex: 0 0 auto;
 
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-0.02rem);  /* -2px / 100 = -0.02rem */
     border-color: rgba(74, 144, 226, 0.8);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(74, 144, 226, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 0.12rem 0.4rem rgba(0, 0, 0, 0.5),  /* 0 12px 40px → rem */
+      0 0 0.2rem rgba(74, 144, 226, 0.3),   /* 0 0 20px → rem */
+      inset 0 0.01rem 0 rgba(255, 255, 255, 0.2);  /* 0 1px 0 → rem */
   }
 
   /* 第二个面板：占满剩余高度，内容区内部滚动 */
+  &.resource-overview {
+    flex: 0 0 auto; /* 根据内容自动调整高度，不压缩不拉伸 */
+  }
+
   &.stretch {
     flex: 1 1 auto;
     display: flex;
@@ -1085,101 +1112,89 @@ const stepClass = (idx: number, _step: any) => {
 }
 
 /* 容器头部 - 深色主题 */
-.container-header {
-  background: linear-gradient(
-    90deg,
-    rgba(74, 144, 226, 0.9) 0%,
-    rgba(74, 144, 226, 0.6) 30%,
-    rgba(74, 144, 226, 0.3) 60%,
-    rgba(74, 144, 226, 0.1) 80%,
-    transparent 100%
-  );
-  color: white;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid rgba(74, 144, 226, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  position: relative;
-
-  /* 添加一个额外的渐变层来增强效果 */
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      90deg,
-      rgba(53, 122, 189, 0.4) 0%,
-      rgba(53, 122, 189, 0.2) 50%,
+  .container-header {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(74, 144, 226, 0.1) 20%, 
+      rgba(74, 144, 226, 0.3) 40%, 
+      rgba(74, 144, 226, 0.6) 50%, 
+      rgba(74, 144, 226, 0.3) 60%, 
+      rgba(74, 144, 226, 0.1) 80%, 
       transparent 100%
     );
-    pointer-events: none;
-  }
-
-  .header-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
-    border-radius: 50%;
+    color: white;
     display: flex;
     align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    gap: 0.1rem;     /* 10px / 100 = 0.1rem，间距响应式 */
+    padding: 0.08rem; /* 8px / 100 = 0.08rem，内边距响应式 */
+    height: 0.28rem;  /* 28px / 100 = 0.28rem，高度响应式 */
+    margin: 0.12rem;  /* 12px / 100 = 0.12rem，边距响应式 */
+    border-bottom: 0.01rem solid rgba(255, 255, 255, 0.12);  /* 1px / 100 = 0.01rem */
     position: relative;
     z-index: 1;
 
-    i {
-      width: 16px;
-      height: 16px;
-      background: none;
-      border-radius: 2px;
+    /* 添加一个额外的渐变层来增强效果 */
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(53, 122, 189, 0.1) 25%, 
+        rgba(53, 122, 189, 0.4) 50%, 
+        rgba(53, 122, 189, 0.1) 75%, 
+        transparent 100%
+      );
+      pointer-events: none;
+    }
 
-      &.icon-supervision::before {
-        content: "🔍";
-        color: #4a90e2;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
+    .header-icon {
+      width: 0.32rem;   /* 32px / 100 = 0.32rem，图标容器响应式 */
+      height: 0.32rem;  /* 32px / 100 = 0.32rem */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+      
+      .title-icon {
+        width: 0.25rem;  /* 25px / 100 = 0.25rem，标题图标响应式 */
+        height: 0.25rem; /* 25px / 100 = 0.25rem */
       }
 
-      &.icon-unreslove::before {
-        content: "🌧️";
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-      }
+      i {
+        width: 0.16rem;  /* 16px / 100 = 0.16rem */
+        height: 0.16rem; /* 16px / 100 = 0.16rem */
+        background: none;
+        border-radius: 0.02rem;  /* 2px / 100 = 0.02rem */
 
-      &.icon-warning::before {
-        content: "⚠️";
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
+        &.icon-back::before {
+          content: "←";
+          color: #9fd1ff;
+          font-size: 0.16rem;  /* 16px / 100 = 0.16rem */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+        }
       }
     }
-  }
 
-  h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
-    position: relative;
-    z-index: 1;
+    h3 {
+      margin: 0;
+      font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Hiragino Sans GB', 'WenQuanYi Micro Hei', sans-serif;
+      font-weight: normal;
+      font-size: 0.16rem;  /* 16px / 100 = 0.16rem，标题文字响应式 */
+      color: #FFFFFF;
+      text-shadow: 0px 0px 0.07rem rgba(75,180,229,0.69), 0px 0.02rem 0.08rem rgba(5,28,55,0.42);  /* 7px 2px 8px → rem */
+      position: relative;
+      z-index: 1;
+    }
   }
-}
 
 /* 可点击头部，用于关闭事件详情 */
 .clickable { cursor: pointer; }
@@ -1188,7 +1203,7 @@ const stepClass = (idx: number, _step: any) => {
 .container-header.simple {
   background: rgba(0, 0, 0, 0.35);
   box-shadow: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 0.01rem solid rgba(255, 255, 255, 0.08);  /* 1px / 100 = 0.01rem */
 }
 .container-header.simple::before { display: none; }
 .container-header.simple .header-icon {
@@ -1198,7 +1213,7 @@ const stepClass = (idx: number, _step: any) => {
 .container-header.simple .header-icon i.icon-back::before {
   content: "←";
   color: #9fd1ff;
-  font-size: 16px;
+  font-size: 0.16rem;  /* 16px / 100 = 0.16rem */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1211,32 +1226,61 @@ const stepClass = (idx: number, _step: any) => {
 
 /* 容器内容 */
 .container-content {
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.3);
+  padding: 0.2rem;  /* 20px / 100 = 0.2rem，内边距响应式 */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  color: #e6f4ff;
+  overflow: auto;
+  /* 优化滚动条样式，仅在需要时显示 */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(116, 159, 229, 0.6) transparent; /* Firefox */
+}
+
+.container-content::-webkit-scrollbar {
+  width: 0.08rem;  /* 8px / 100 = 0.08rem */
+}
+
+.container-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.container-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(116, 159, 229, 0.8), rgba(74, 144, 226, 0.6));
+  border-radius: 0.06rem;  /* 6px / 100 = 0.06rem */
+}
+
+.container-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(140, 175, 235, 0.9), rgba(90, 155, 232, 0.8));
 }
 
 /* 调度资源概况 - 指标卡片样式 */
 .metric-cards {
   display: flex;
   flex-direction: row;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
   justify-content: space-between;
 }
 
 .metric-card {
   flex: 1;
-  // background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  // border-radius: 12px;
-  // padding: 16px;
-  // border: 2px solid rgba(74, 144, 226, 0.4);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.12) 0%, rgba(53, 122, 189, 0.22) 100%);
+  border-radius: 0.08rem;  /* 8px / 100 = 0.08rem，圆角响应式 */
+  padding: 0.12rem 0.14rem;  /* 12px 14px / 100 → rem，内边距响应式 */
+  border: 0.01rem solid rgba(74, 144, 226, 0.3);  /* 1px / 100 = 0.01rem */
   position: relative;
-  // transition: all 0.3s ease;
-  // box-shadow:
-  //   0 4px 16px rgba(0, 0, 0, 0.3),
-  //   inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 0.02rem 0.08rem rgba(0, 0, 0, 0.2);  /* 0 2px 8px → rem */
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
+
+  &:hover {
+    transform: translateY(-0.01rem);  /* -1px / 100 = -0.01rem */
+    border-color: rgba(74, 144, 226, 0.5);
+    box-shadow: 0 0.04rem 0.12rem rgba(0, 0, 0, 0.3);  /* 0 4px 12px → rem */
+  }
 
   .card-icon {
     position: relative;
@@ -1247,8 +1291,8 @@ const stepClass = (idx: number, _step: any) => {
     flex-shrink: 0;
 
     img {
-      width: 56px;
-      height: 56px;
+      width: 0.56rem;  /* 56px / 100 = 0.56rem，图标尺寸响应式 */
+      height: 0.56rem; /* 56px / 100 = 0.56rem */
     }
   }
 
@@ -1260,11 +1304,11 @@ const stepClass = (idx: number, _step: any) => {
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
-    min-height: 40px;
+    min-height: 0.4rem;  /* 40px / 100 = 0.4rem，最小高度响应式 */
   }
 
   .card-label {
-    font-size: 12px;
+    font-size: clamp(10px, 0.8vw, 14px);  /* 12px → clamp，卡片标签使用clamp确保可读性 */
     color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
     align-self: flex-start;
@@ -1272,10 +1316,10 @@ const stepClass = (idx: number, _step: any) => {
   }
 
   .card-value {
-    font-size: 24px;
+    font-size: clamp(18px, 1.8vw, 32px);  /* 24px → clamp，卡片数值使用clamp确保可读性 */
     color: #ffffff;
     font-weight: bold;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 0.02rem 0.04rem rgba(0, 0, 0, 0.3);  /* 0 2px 4px → rem */
     // align-self: flex-end;
     margin-top: auto;
   }
@@ -1285,17 +1329,17 @@ const stepClass = (idx: number, _step: any) => {
 .unreslove-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
 }
 
 .event-search {
-  margin-bottom: 4px;
+  margin-bottom: 0.04rem;  /* 4px / 100 = 0.04rem，边距响应式 */
 }
 
 .event-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
   /* 占满父容器剩余高度，由父级flex控制 */
   flex: 1 1 auto;
   min-height: 0;
@@ -1311,20 +1355,20 @@ const stepClass = (idx: number, _step: any) => {
 }
 
 .event-card {
-  background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.12) 0%, rgba(53, 122, 189, 0.22) 100%);
+  border-radius: 0.08rem;  /* 8px / 100 = 0.08rem，圆角响应式 */
+  padding: 0.12rem 0.14rem;  /* 12px 14px / 100 → rem，内边距响应式 */
+  border: 0.01rem solid rgba(74, 144, 226, 0.3);  /* 1px / 100 = 0.01rem */
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.02rem 0.08rem rgba(0, 0, 0, 0.2);  /* 0 2px 8px → rem */
 
   &:hover {
+    transform: translateY(-0.01rem);  /* -1px / 100 = -0.01rem */
     border-color: rgba(74, 144, 226, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
+    box-shadow: 0 0.04rem 0.12rem rgba(0, 0, 0, 0.3);  /* 0 4px 12px → rem */
   }
 }
 
@@ -1332,32 +1376,32 @@ const stepClass = (idx: number, _step: any) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.08rem;  /* 8px / 100 = 0.08rem，间距响应式 */
 }
 
 .event-title {
-  font-size: 14px;
+  font-size: clamp(12px, 1vw, 16px);  /* 14px → clamp，事件标题使用clamp确保可读性 */
   color: #ffffff;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 0.04rem;  /* 4px / 100 = 0.04rem，边距响应式 */
 }
 
 .event-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.04rem;  /* 4px / 100 = 0.04rem，间距响应式 */
 }
 
 .event-detail-item {
   display: flex;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: clamp(10px, 0.8vw, 14px);  /* 12px → clamp，事件详情使用clamp确保可读性 */
   line-height: 1.4;
 }
 
 .detail-label {
   color: rgba(255, 255, 255, 0.7);
-  margin-right: 4px;
+  margin-right: 0.04rem;  /* 4px / 100 = 0.04rem，边距响应式 */
   flex-shrink: 0;
 }
 
@@ -1369,25 +1413,25 @@ const stepClass = (idx: number, _step: any) => {
 
 .event-action {
   flex-shrink: 0;
-  margin-left: 12px;
+  margin-left: 0.12rem;  /* 12px / 100 = 0.12rem，边距响应式 */
 }
 
 .view-details-btn {
   background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 12px;
+  border-radius: 0.04rem;  /* 4px / 100 = 0.04rem，圆角响应式 */
+  padding: 0.06rem 0.12rem;  /* 6px 12px / 100 → rem，内边距响应式 */
+  font-size: clamp(10px, 0.8vw, 14px);  /* 12px → clamp，按钮文字使用clamp确保可读性 */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.02rem 0.04rem rgba(0, 0, 0, 0.2);  /* 0 2px 4px → rem */
 
   &:hover {
     background: linear-gradient(135deg, #357abd 0%, #2e6ba8 100%);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
+    box-shadow: 0 0.04rem 0.08rem rgba(0, 0, 0, 0.3);  /* 0 4px 8px → rem */
+    transform: translateY(-0.01rem);  /* -1px / 100 = -0.01rem */
   }
 
   &:active {
@@ -1395,80 +1439,12 @@ const stepClass = (idx: number, _step: any) => {
   }
 }
 
-/* 仓库管理样式（参考未结案事件列表） */
-.warehouse-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-
-  /* 隐藏滚动条但保持滚动功能 */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-  &::-webkit-scrollbar { display: none; }
-}
-
-.warehouse-card {
-  background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid rgba(74, 144, 226, 0.3);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  &:hover {
-    border-color: rgba(74, 144, 226, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
-  }
-}
-
-.warehouse-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.warehouse-title {
-  font-size: 14px;
-  color: #ffffff;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.warehouse-details {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.warehouse-detail-row {
-  display: flex;
-  gap: 24px;
-}
-
-.warehouse-detail-item {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-}
-
-.warehouse-action {
-  flex-shrink: 0;
-  margin-left: 12px;
-}
 
 /* 仓库管理样式（参考未结案事件列表） */
 .warehouse-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1481,20 +1457,20 @@ const stepClass = (idx: number, _step: any) => {
 }
 
 .warehouse-card {
-  background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.12) 0%, rgba(53, 122, 189, 0.22) 100%);
+  border-radius: 0.08rem;  /* 8px / 100 = 0.08rem，圆角响应式 */
+  padding: 0.12rem 0.14rem;  /* 12px 14px / 100 → rem，内边距响应式 */
+  border: 0.01rem solid rgba(74, 144, 226, 0.3);  /* 1px / 100 = 0.01rem */
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.02rem 0.08rem rgba(0, 0, 0, 0.2);  /* 0 2px 8px → rem */
 
   &:hover {
+    transform: translateY(-0.01rem);  /* -1px / 100 = -0.01rem */
     border-color: rgba(74, 144, 226, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transform: translateY(-1px);
+    box-shadow: 0 0.04rem 0.12rem rgba(0, 0, 0, 0.3);  /* 0 4px 12px → rem */
   }
 }
 
@@ -1502,37 +1478,37 @@ const stepClass = (idx: number, _step: any) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.08rem;  /* 8px / 100 = 0.08rem，间距响应式 */
 }
 
 .warehouse-title {
-  font-size: 16px;
+  font-size: clamp(12px, 1vw, 18px);  /* 16px → clamp，仓库标题使用clamp确保可读性 */
   color: #ffffff;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 0.04rem;  /* 4px / 100 = 0.04rem，边距响应式 */
 }
 
 .warehouse-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.04rem;  /* 4px / 100 = 0.04rem，间距响应式 */
 }
 
 .warehouse-detail-row {
   display: flex;
-  gap: 24px;
+  gap: 0.24rem;  /* 24px / 100 = 0.24rem，间距响应式 */
 }
 
 .warehouse-detail-item {
   display: flex;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: clamp(10px, 0.8vw, 14px);  /* 12px → clamp，仓库详情使用clamp确保可读性 */
   line-height: 1.4;
 }
 
 .warehouse-action {
   flex-shrink: 0;
-  margin-left: 12px;
+  margin-left: 0.12rem;  /* 12px / 100 = 0.12rem，边距响应式 */
 }
 
 /* 预警信息样式 */

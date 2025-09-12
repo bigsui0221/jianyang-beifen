@@ -1,23 +1,25 @@
 
 <template>
-   <div id="mapContainer" ref="mapRoot">
+   <div id="mapContainer" ref="mapRoot" v-loading="isLoading" element-loading-text="数据加载中...">
      <div class="panel-left">
        <div class="panel-container" ref="leftPanel">
          <div class="container-header">
-           <div class="header-icon"><i class="icon-supervision"></i></div>
+           <div class="header-icon">
+             <img :src="titleIcon" alt="事件概况" class="title-icon" />
+           </div>
            <h3>事件概况</h3>
          </div>
          <div class="container-content">
           <div class="overview-cards">
-            <div class="overview-card">
+            <div class="overview-card pending-card">
               <div class="card-title">待办事件</div>
               <div class="card-value">{{ eventOverviewData.pendingEvent || 0 }}</div>
             </div>
-            <div class="overview-card">
+            <div class="overview-card done-card">
               <div class="card-title">已办事件</div>
               <div class="card-value">{{ eventOverviewData.doneEvent || 0 }}</div>
             </div>
-            <div class="overview-card">
+            <div class="overview-card approaching-card">
               <div class="card-title">临期事件</div>
               <div class="card-value">{{ eventOverviewData.approachingEvent || 0 }}</div>
             </div>
@@ -26,11 +28,11 @@
           <div class="pie-section">
             <div class="pie-card">
               <div class="pie-title">事件类型占比</div>
-              <EChart v-if="eventTypeOption" :options="eventTypeOption" height="200px" width="100%" />
+              <EChart v-if="eventTypeOption" :options="eventTypeOption" height="1.9rem" width="100%" /> <!-- 190px → 1.9rem，图表高度响应式 -->
             </div>
             <div class="pie-card">
               <div class="pie-title">事件状态占比</div>
-              <EChart v-if="eventStatusOption" :options="eventStatusOption" height="200px" width="100%" />
+              <EChart v-if="eventStatusOption" :options="eventStatusOption" height="1.9rem" width="100%" /> <!-- 190px → 1.9rem，图表高度响应式 -->
             </div>
           </div>
          </div>
@@ -40,7 +42,9 @@
        <div class="panel-left2">
          <div class="panel-container">
            <div class="container-header">
-             <div class="header-icon"><i class="icon-warning"></i></div>
+             <div class="header-icon">
+               <img :src="titleIcon" alt="消息通知" class="title-icon" />
+             </div>
              <h3>消息通知</h3>
            </div>
            <div class="container-content">
@@ -68,7 +72,9 @@
        <div class="panel-bottom">
          <div class="panel-container">
            <div class="container-header">
-             <div class="header-icon"><i class="icon-list"></i></div>
+             <div class="header-icon">
+               <img :src="titleIcon" alt="事件列表" class="title-icon" />
+             </div>
              <h3>事件列表</h3>
            </div>
            <div class="container-content">
@@ -119,7 +125,18 @@ import { initGisMap, createMarkerGraphic, createMarkerPopup, updateAllPopupPosit
 import { MetricsEventOverviewAPI } from '@/api/sector/metrics'
 import { esriModules } from '@/utils/gis'
 import eventIcon from '@/assets/imgs/sector/液位检测点.png'
+import titleIcon from '@/assets/imgs/sector/title-icon.png'
 import EChart from '@/components/Echart/src/Echart.vue'
+
+// REM 响应式设置 - 基于1920px设计稿
+const setRem = () => {
+  const designWidth = 1920 // 设计稿基准宽度
+  const currentWidth = window.innerWidth
+  // 计算缩放比例，以100px为基准字体大小
+  const fontSize = Math.min((currentWidth / designWidth) * 100, 200) // 限制最大200px
+  document.documentElement.style.fontSize = fontSize + 'px'
+  console.log(`[Incidents] 屏幕宽度: ${currentWidth}px, 根字体大小: ${fontSize}px`)
+}
 
 const gisMap = shallowRef<any>(null);
 const mapView = shallowRef<any>(null);
@@ -162,11 +179,9 @@ const initMap = async () => {
       console.warn('设置地图监听器失败:', error)
     }
     
-    isLoading.value = false;
     console.log('地图初始化完成')
   } catch (error) {
     console.error('地图初始化失败:', error)
-    isLoading.value = false;
   }
 };
 
@@ -311,7 +326,6 @@ function renderEventMarkers() {
       el.className = 'event-popup'
       el.innerHTML = `<div class="title">${row.eventTitle || ''}</div><div class="sub">${row.eventLocation || ''}</div>`
       el.style.position = 'absolute'
-      el.style.transform = 'translate(-50%, -100%)'
       el.style.pointerEvents = 'auto'
       el.style.display = 'none' // 初始隐藏
       mapView.value?.container?.appendChild(el)
@@ -380,8 +394,13 @@ const printEventOverviewData = async () => {
     await nextTick()
     adjustBottomPanelHeight()
     renderEventMarkers()
+    
+    // 数据加载完成后隐藏loading
+    isLoading.value = false
   } catch (error) {
     console.error('获取 MetricsEventOverviewAPI 数据失败:', error)
+    // 即使出错也要隐藏loading
+    isLoading.value = false
   }
 }
 
@@ -390,6 +409,10 @@ watch(eventList, () => {
 })
 
 onMounted(async () => {
+  // 设置 REM 响应式
+  setRem()
+  window.addEventListener('resize', setRem)
+  
   // 先初始化地图
   await initMap()
   // 地图初始化完成后再获取数据并渲染
@@ -399,6 +422,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  // 清理 REM 监听器
+  window.removeEventListener('resize', setRem)
+  
   window.removeEventListener('resize', onResize)
   eventPopupMap.forEach((el) => el.remove())
   eventPopupMap.clear()
@@ -406,79 +432,98 @@ onBeforeUnmount(() => {
 </script>
 <style lang="scss" scoped>
  #mapContainer {
-    width: 100%;
-    height: calc(100vh - 56px);
-    position: relative;
-    /* 适当减少底部区高度，增大左侧上方区域占比 */
-    --bottom-panel-height: 280px;
-    --panel-gap: 12px;
-    --left-panel-width: 560px;
-  }
+  width: 100vw;   /* 响应式宽度 */
+  height: calc(100vh - 0.6rem); /* 100vh - 0.6rem(菜单栏高度，响应式) */
+  position: relative;
+  
+  /* CSS变量定义 - 转换为rem */
+  --left-panel-width: 4.9rem;    /* 490px / 100 = 4.9rem，事件概况框宽度 */
+  --bottom-panel-height: 3.45rem; /* 345px / 100 = 3.45rem，消息通知框高度 */
+  --panel-gap: 0.12rem;          /* 12px / 100 = 0.12rem，面板间距 */
+}
  
   /* 复用 metrics 深色面板风格 */
   .panel-container {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    background: linear-gradient(135deg, rgba(13, 41, 79, 0.9) 0%, rgba(25, 57, 99, 0.8) 100%);
-    backdrop-filter: blur(15px);
-    border-radius: 12px;
-    border: 2px solid rgba(74, 144, 226, 0.6);
+    background: linear-gradient( 180deg, rgba(0,40,96,0) 0%, rgba(0,42,95,0.09) 23%, rgba(0,42,97,0.24) 45%, rgba(0,40,96,0.27) 100%), linear-gradient( 180deg, rgba(16,98,222,0.12) 0%, rgba(17,96,219,0.11) 55%, rgba(19,98,215,0.05) 76%, rgba(0,95,223,0.03) 100%), rgba(0,15,42,0.7);
+    border-radius: 0.12rem;  /* 12px / 100 = 0.12rem，圆角响应式 */
+    border: 0.02rem solid rgba(74, 144, 226, 0.6);  /* 2px / 100 = 0.02rem */
     box-shadow: 
-      0 8px 32px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 0.08rem 0.32rem rgba(0, 0, 0, 0.4),  /* 0 8px 32px → rem */
+      inset 0 0.01rem 0 rgba(255, 255, 255, 0.1);  /* 0 1px 0 → rem */
     overflow: hidden;
     transition: all 0.3s ease;
   }
   .panel-container:hover {
-    transform: translateY(-2px);
+    transform: translateY(-0.02rem);  /* -2px / 100 = -0.02rem */
     border-color: rgba(74, 144, 226, 0.8);
     box-shadow: 
-      0 12px 40px rgba(0, 0, 0, 0.5),
-      0 0 20px rgba(74, 144, 226, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      0 0.12rem 0.4rem rgba(0, 0, 0, 0.5),  /* 0 12px 40px → rem */
+      0 0 0.2rem rgba(74, 144, 226, 0.3),   /* 0 0 20px → rem */
+      inset 0 0.01rem 0 rgba(255, 255, 255, 0.2);  /* 0 1px 0 → rem */
   }
   .container-header {
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(74, 144, 226, 0.1) 20%, 
+      rgba(74, 144, 226, 0.3) 40%, 
+      rgba(74, 144, 226, 0.6) 50%, 
+      rgba(74, 144, 226, 0.3) 60%, 
+      rgba(74, 144, 226, 0.1) 80%, 
+      transparent 100%
+    );
+    color: white;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    color: #e6f4ff;
+    gap: 0.1rem;     /* 10px / 100 = 0.1rem，间距响应式 */
+    padding: 0.08rem; /* 8px / 100 = 0.08rem，内边距响应式 */
+    height: 0.28rem;  /* 28px / 100 = 0.28rem，高度响应式 */
+    margin: 0.12rem;  /* 12px / 100 = 0.12rem，边距响应式 */
+    border-bottom: 0.01rem solid rgba(255, 255, 255, 0.12);  /* 1px / 100 = 0.01rem */
+    position: relative;
+    z-index: 1;
   }
+  .header-icon {
+    width: 0.32rem;   /* 32px / 100 = 0.32rem，图标容器响应式 */
+    height: 0.32rem;  /* 32px / 100 = 0.32rem */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    
+    .title-icon {
+      width: 0.25rem;  /* 25px / 100 = 0.25rem，标题图标响应式 */
+      height: 0.25rem; /* 25px / 100 = 0.25rem */
+    }
+  }
+
   .container-header h3 {
-    font-size: 16px;
-    font-weight: 700;
     margin: 0;
+    font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Hiragino Sans GB', 'WenQuanYi Micro Hei', sans-serif;
+    font-weight: normal;
+    font-size: 0.16rem;  /* 16px / 100 = 0.16rem，标题文字响应式 */
+    color: #FFFFFF;
+    text-shadow: 0px 0px 0.07rem rgba(75,180,229,0.69), 0px 0.02rem 0.08rem rgba(5,28,55,0.42);  /* 7px 2px 8px → rem */
+    position: relative;
+    z-index: 1;
   }
   .container-content {
-    padding: 12px 14px;
+    padding: 0.2rem;  /* 20px / 100 = 0.2rem，内边距响应式 */
     flex: 1 1 auto;
     min-height: 0;
     color: #e6f4ff;
-    overflow: auto;
-    /* 优化滚动条样式，仅在需要时显示 */
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: rgba(116, 159, 229, 0.6) transparent; /* Firefox */
-  }
-  .container-content::-webkit-scrollbar {
-    width: 8px;
-  }
-  .container-content::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .container-content::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(116, 159, 229, 0.8), rgba(74, 144, 226, 0.6));
-    border-radius: 6px;
-  }
-  .container-content::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, rgba(140, 175, 235, 0.9), rgba(90, 155, 232, 0.8));
+    overflow: hidden; /* 隐藏左1面板的滚动条 */
+    display: flex;
+    flex-direction: column;
   }
  
   .overview-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
     /* 移除固定高度，避免后续图表被裁剪 */
   }
   .overview-card {
@@ -487,39 +532,52 @@ onBeforeUnmount(() => {
     justify-content: center;
     align-items: center;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(74, 144, 226, 0.4);
-    border-radius: 10px;
-    padding: 12px;
-    min-height: 96px;
+    border: 0.01rem solid rgba(74, 144, 226, 0.4);  /* 1px / 100 = 0.01rem */
+    border-radius: 0.1rem;   /* 10px / 100 = 0.1rem，圆角响应式 */
+    padding: 0.12rem;        /* 12px / 100 = 0.12rem，内边距响应式 */
+    height: 0.9rem;          /* 90px / 100 = 0.9rem，高度响应式 */
   }
   .card-title {
-    font-size: 14px;
+    font-size: 0.14rem;  /* 14px / 100 = 0.14rem，界面文字跟随整体缩放 */
     color: #a9c7f7;
   }
   .card-value {
-    margin-top: 8px;
-    font-size: 28px;
+    margin-top: 0.08rem;  /* 8px / 100 = 0.08rem，边距响应式 */
+    font-size: clamp(22px, 1.8vw, 36px);  /* 数据值使用clamp确保可读性 */
     font-weight: 800;
     color: #fff;
   }
+  
+  /* 不同卡片的数字颜色 */
+  .pending-card .card-value {
+    color: #3EEAB7;
+  }
+  
+  .done-card .card-value {
+    color: #22BFFF;
+  }
+  
+  .approaching-card .card-value {
+    color: #F7BA1E;
+  }
  
   .pie-section {
-    margin-top: 12px;
+    margin-top: 0.12rem;  /* 12px / 100 = 0.12rem，边距响应式 */
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 0.12rem;  /* 12px / 100 = 0.12rem，间距响应式 */
   }
   .pie-card {
     background: rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(74, 144, 226, 0.25);
-    border-radius: 10px;
-    padding: 8px 8px 0;
+    border: 0.01rem solid rgba(74, 144, 226, 0.25);  /* 1px / 100 = 0.01rem */
+    border-radius: 0.1rem;  /* 10px / 100 = 0.1rem，圆角响应式 */
+    padding: 0.08rem 0.08rem 0;  /* 8px 8px 0 → rem，内边距响应式 */
   }
   .pie-title {
-    font-size: 14px;
+    font-size: 0.14rem;  /* 14px / 100 = 0.14rem，界面文字跟随整体缩放 */
     font-weight: 600;
     color: #e6f4ff;
-    margin: 0 0 6px 4px;
+    margin: 0 0 0.06rem 0.04rem;  /* 0 0 6px 4px → rem，边距响应式 */
   }
 
   /* 消息通知表格样式，保持与面板主题一致 */
@@ -532,24 +590,31 @@ onBeforeUnmount(() => {
   }
   .notify-thead {
     display: grid;
-    grid-template-columns: 1fr 80px 100px 160px;
-    padding: 8px 10px;
+    grid-template-columns: 1fr 0.8rem 1rem 1.6rem;  /* 80px 100px 160px → rem */
+    padding: 0.08rem 0.1rem;  /* 8px 10px → rem，内边距响应式 */
     background: rgba(74, 144, 226, 0.12);
     color: #cfe2ff;
     font-weight: 600;
-    font-size: 13px;
+    font-size: clamp(11px, 0.75vw, 15px);  /* 13px → clamp，表格标题使用clamp确保可读性 */
   }
   .notify-tbody {
-    max-height: 100%;
+    max-height: 2rem;  /* 200px / 100 = 2rem，最大高度响应式 */
+    overflow-y: auto; /* 添加垂直滚动 */
+    /* 隐藏滚动条但保持滚动功能 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  .notify-tbody::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
   .notify-row {
     display: grid;
-    grid-template-columns: 1fr 80px 100px 160px;
-    padding: 8px 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    grid-template-columns: 1fr 0.8rem 1rem 1.6rem;  /* 80px 100px 160px → rem */
+    padding: 0.08rem 0.1rem;  /* 8px 10px → rem，内边距响应式 */
+    border-top: 0.01rem solid rgba(255, 255, 255, 0.06);  /* 1px / 100 = 0.01rem */
     align-items: center;
     color: #e6f4ff;
-    font-size: 13px;
+    font-size: clamp(11px, 0.75vw, 15px);  /* 13px → clamp，表格内容使用clamp确保可读性 */
   }
   .notify-row:hover {
     background: rgba(74, 144, 226, 0.08);
@@ -561,39 +626,49 @@ onBeforeUnmount(() => {
   }
   .status-badge {
     display: inline-block;
-    min-width: 44px;
-    padding: 2px 8px;
-    border-radius: 999px;
+    min-width: 0.44rem;  /* 44px / 100 = 0.44rem，最小宽度响应式 */
+    padding: 0.02rem 0.08rem;  /* 2px 8px → rem，内边距响应式 */
+    border-radius: 9.99rem;  /* 999px → 9.99rem，圆形在rem下保持 */
     text-align: center;
-    font-size: 12px;
+    font-size: clamp(10px, 0.7vw, 14px);  /* 12px → clamp，状态文字使用clamp确保可读性 */
   }
   .status-badge.read {
     background: rgba(76, 175, 80, 0.15);
     color: #9be199;
-    border: 1px solid rgba(76, 175, 80, 0.35);
+    border: 0.01rem solid rgba(76, 175, 80, 0.35);  /* 1px / 100 = 0.01rem */
   }
   .status-badge.unread {
     background: rgba(255, 99, 71, 0.15);
     color: #ffb0a3;
-    border: 1px solid rgba(255, 99, 71, 0.35);
+    border: 0.01rem solid rgba(255, 99, 71, 0.35);  /* 1px / 100 = 0.01rem */
   }
 
   /* 事件列表表格样式，延续一致风格 */
   .event-table {
     width: 100%;
-    border: 1px solid rgba(74, 144, 226, 0.25);
-    border-radius: 8px;
+    border: 0.01rem solid rgba(74, 144, 226, 0.25);  /* 1px / 100 = 0.01rem */
+    border-radius: 0.08rem;  /* 8px / 100 = 0.08rem，圆角响应式 */
     overflow: hidden;
     background: rgba(255, 255, 255, 0.03);
   }
   .event-thead {
     display: grid;
-    grid-template-columns: 2fr 110px 160px 1.6fr 90px 110px 110px 90px 90px;
-    padding: 8px 10px;
+    grid-template-columns: 2fr 1.1rem 1.6rem 1.6fr 0.9rem 1.1rem 1.1rem 0.9rem 0.9rem;  /* 110px 160px 90px → rem */
+    padding: 0.08rem 0.1rem;  /* 8px 10px → rem，内边距响应式 */
     background: rgba(74, 144, 226, 0.12);
     color: #cfe2ff;
     font-weight: 600;
-    font-size: 13px;
+    font-size: clamp(11px, 0.75vw, 15px);  /* 13px → clamp，表格标题使用clamp确保可读性 */
+  }
+  .event-tbody {
+    max-height: 2rem;  /* 200px / 100 = 2rem，最大高度响应式 */
+    overflow-y: auto; /* 添加垂直滚动 */
+    /* 隐藏滚动条但保持滚动功能 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  .event-tbody::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
   .event-row {
     display: grid;
@@ -636,21 +711,20 @@ onBeforeUnmount(() => {
 
   .panel-left {
     position: absolute;
-    top: var(--panel-gap);
-    left: var(--panel-gap);
+    top: 0.24rem;  /* 固定0.24rem边距 */
+    left: 0.24rem; /* 24px / 100 = 0.24rem，左边距与metrics保持一致 */
     width: var(--left-panel-width);
-    /* 与下方左2之间保持固定 1 个间距 */
-    bottom: calc(var(--bottom-panel-height) + var(--panel-gap));
+    height: 6rem; /* 固定6rem高度 */
     display: flex;
     flex-direction: column;
   }
 
   .bottom-row {
     position: absolute;
-    left: var(--panel-gap);
-    right: var(--panel-gap);
-    bottom: var(--panel-gap);
-    height: var(--bottom-panel-height);
+    left: 0.24rem;   /* 24px / 100 = 0.24rem，左边距与metrics保持一致 */
+    right: 0.24rem;  /* 24px / 100 = 0.24rem，右边距与metrics保持一致 */
+    top: 6.48rem;    /* panel-left的top(0.24rem) + height(6rem) + 间隔(0.24rem) = 6.48rem */
+    bottom: 0.24rem; /* 24px / 100 = 0.24rem，底部边距 */
     display: flex;
     gap: var(--panel-gap);
     align-items: stretch;
@@ -671,8 +745,8 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
   .locate-btn {
-    padding: 4px 10px;
-    border-radius: 6px;
+    padding: 0.04rem 0.1rem;  /* 4px 10px → rem，内边距响应式 */
+    border-radius: 0.06rem;   /* 6px / 100 = 0.06rem，圆角响应式 */
     border: 1px solid rgba(74, 144, 226, 0.5);
     background: rgba(74, 144, 226, 0.15);
     color: #cfe2ff;
@@ -689,6 +763,10 @@ onBeforeUnmount(() => {
     color: #e6f4ff;
     white-space: nowrap;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    /* 确保悬浮框距离上下和左边都保持24px */
+    min-width: 200px;
+    max-width: 300px;
+    z-index: 1000;
   }
   .event-popup .title {
     font-size: 13px;

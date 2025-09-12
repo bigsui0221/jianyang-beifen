@@ -1,5 +1,5 @@
 <template>
-  <ContentWrap :border="false" padding="20px" :body-style="{ padding: '0px' }">
+  <ContentWrap :border="false" padding="0.2rem" :body-style="{ padding: '0px' }"> <!-- 20px → 0.2rem -->
     <el-button type="primary" @click="router.back()">返回</el-button>
     <at-tabs :tabs="tabs" v-model="activeTab" />
     <at-info :config="infoConfig" v-if="activeTab === '0'" />
@@ -87,13 +87,13 @@ const transformDataToFlow = (data, parentId = null, level = 0) => {
       // algorithmType: data.algorithmType 
     },
     style: { 
-      width: '220px', 
+      width: '2.2rem',  /* 220px / 100 = 2.2rem */ 
       // height: data.algorithmType ? '80px' : '60px', 
-      height: '160px',
+      height: '1.6rem',  /* 160px / 100 = 1.6rem */
       // border: `2px solid ${color}`,
-      padding: '10px',
+      padding: '0.1rem',  /* 10px / 100 = 0.1rem */
       backgroundColor: '#85d1eb',
-      borderRadius: '5px',
+      borderRadius: '0.05rem',  /* 5px / 100 = 0.05rem */
       color: '#FFF'
     },
     position: { x: 0, y: 0 } // 添加默认 position 属性
@@ -144,8 +144,8 @@ const layout = () => {
  
   // 设置节点尺寸
   nodes.value.forEach(node => {
-    const height = typeof node.style === 'object' && node.style?.height === '80px' ? 90 : 70
-    const width = 170 // 包括 padding 和 border
+    const height = typeof node.style === 'object' && node.style?.height === '0.8rem' ? 0.9 : 0.7  /* 80px→0.8rem, 90→0.9rem, 70→0.7rem，节点高度响应式 */
+    const width = 1.7 // 170px / 100 = 1.7rem，包括 padding 和 border
 
     dagreGraph.setNode(node.id, { width, height })
     // dagreGraph.setNode(node.id, {
